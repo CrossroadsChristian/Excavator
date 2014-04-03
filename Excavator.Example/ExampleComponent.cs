@@ -55,9 +55,9 @@ namespace Excavator.Example
         /// <value>
         /// The supported extension type(s).
         /// </value>
-        public override List<string> ExtensionTypes
+        public override string ExtensionType
         {
-            get { return new List<string> { ".mdf" }; }
+            get { return ".mdf"; }
         }
 
         // Disable compiler warning: value never assigned

@@ -50,11 +50,11 @@ namespace Excavator.CSV
         /// Gets the supported file extension type(s).
         /// </summary>
         /// <value>
-        /// The supported extension type(s).
+        /// The supported extension type.
         /// </value>
-        public override List<string> ExtensionTypes
+        public override string ExtensionType
         {
-            get { return new List<string> { ".csv" }; }
+            get { return ".csv"; }
         }
 
         // Disable compiler warning: value never assigned

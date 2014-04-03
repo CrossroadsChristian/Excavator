@@ -24,6 +24,7 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
+using LumenWorks.Framework.IO.Csv;
 using OrcaMDF.Core.Engine;
 using OrcaMDF.Core.MetaData;
 
@@ -49,6 +50,11 @@ namespace Excavator
         public Database database;
 
         /// <summary>
+        /// The local csv
+        /// </summary>
+        public CachedCsvReader csv;
+
+        /// <summary>
         /// Gets the full name of the excavator type.
         /// </summary>
         /// <value>
@@ -60,12 +66,12 @@ namespace Excavator
         }
 
         /// <summary>
-        /// Gets the supported file extension type(s).
+        /// Gets the supported file extension type.
         /// </summary>
         /// <value>
-        /// The supported extension type(s).
+        /// The supported extension type.
         /// </value>
-        public abstract List<string> ExtensionTypes
+        public abstract string ExtensionType
         {
             get;
         }

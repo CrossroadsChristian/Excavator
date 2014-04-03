@@ -240,16 +240,8 @@ namespace Excavator
         {
             var filePicker = new OpenFileDialog();
             //mdfPicker.AddExtension = false;
-            var supportedExtensions = frontEndLoader.excavatorTypes.SelectMany( t => t.ExtensionTypes ).ToList();
-            if ( supportedExtensions.Count > 1 )
-            {
-                var asdf = string.Join( "|*", supportedExtensions );
-                filePicker.Filter = asdf;
-            }
-            else
-            {
-                filePicker.Filter = string.Format( "*{0}", supportedExtensions );
-            }
+            var supportedExtensions = frontEndLoader.excavatorTypes.Select( t => t.FullName + " |*" + t.ExtensionType ).ToList();
+            filePicker.Filter = string.Join( "|", supportedExtensions );
 
             if ( filePicker.ShowDialog() == true )
             {
