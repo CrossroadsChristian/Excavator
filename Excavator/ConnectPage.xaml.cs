@@ -238,13 +238,22 @@ namespace Excavator
         /// <param name="e">The <see cref="DoWorkEventArgs"/> instance containing the event data.</param>
         private void bwPreview_DoWork( object sender, DoWorkEventArgs e )
         {
-            var mdfPicker = new OpenFileDialog();
-            mdfPicker.Filter = "SQL Database files|*.mdf";
-            mdfPicker.AddExtension = false;
-
-            if ( mdfPicker.ShowDialog() == true )
+            var filePicker = new OpenFileDialog();
+            //mdfPicker.AddExtension = false;
+            var supportedExtensions = frontEndLoader.excavatorTypes.SelectMany( t => t.ExtensionTypes ).ToList();
+            if ( supportedExtensions.Count > 1 )
             {
-                var database = new Database( mdfPicker.FileName );
+                var asdf = string.Join( "|*", supportedExtensions );
+                filePicker.Filter = asdf;
+            }
+            else
+            {
+                filePicker.Filter = string.Format( "*{0}", supportedExtensions );
+            }
+
+            if ( filePicker.ShowDialog() == true )
+            {
+                var database = new Database( filePicker.FileName );
                 if ( database != null )
                 {
                     var dbType = (string)e.Argument;

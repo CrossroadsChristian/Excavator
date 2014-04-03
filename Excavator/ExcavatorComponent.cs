@@ -60,6 +60,17 @@ namespace Excavator
         }
 
         /// <summary>
+        /// Gets the supported file extension type(s).
+        /// </summary>
+        /// <value>
+        /// The supported extension type(s).
+        /// </value>
+        public abstract List<string> ExtensionTypes
+        {
+            get;
+        }
+
+        /// <summary>
         /// Holds a reference to the loaded nodes
         /// </summary>
         public List<DatabaseNode> TableNodes;
@@ -98,16 +109,17 @@ namespace Excavator
                 tableItem.Name = table.Name;
                 tableItem.NodeType = typeof( object );
 
-                var rowSchema = rows.FirstOrDefault();
-                if ( rowSchema != null )
+                var rowData = rows.FirstOrDefault();
+                if ( rowData != null )
                 {
-                    foreach ( var column in rowSchema.Columns )
+                    foreach ( var column in rowData.Columns )
                     {
                         var childItem = new DatabaseNode();
                         childItem.Name = column.Name;
                         childItem.NodeType = Extensions.GetSQLType( column.Type );
                         childItem.Table.Add( tableItem );
                         tableItem.Columns.Add( childItem );
+                        tableItem.Value = rowData[column] ?? DBNull.Value;
                     }
                 }
 
@@ -128,23 +140,20 @@ namespace Excavator
 
             if ( node != null )
             {
-                var scanner = new DataScanner( database );
-                var rows = scanner.ScanTable( node.Name );
                 var dataTable = new DataTable();
                 foreach ( var column in node.Columns )
                 {
                     dataTable.Columns.Add( column.Name, column.NodeType );
                 }
 
-                var rowData = rows.FirstOrDefault();
-                if ( rowData != null )
+                var rowPreview = dataTable.NewRow();
+                foreach ( var column in node.Columns )
                 {
-                    var rowPreview = dataTable.NewRow();
-                    foreach ( var column in rowData.Columns )
-                    {
-                        rowPreview[column.Name] = rowData[column] ?? DBNull.Value;
-                    }
+                    rowPreview[column.Name] = node.Value ?? DBNull.Value;
+                }
 
+                if ( rowPreview != null )
+                {
                     dataTable.Rows.Add( rowPreview );
                     return dataTable;
                 }

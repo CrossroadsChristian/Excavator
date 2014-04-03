@@ -49,6 +49,17 @@ namespace Excavator.Example
             get { return "Example"; }
         }
 
+        /// <summary>
+        /// Gets the supported file extension type(s).
+        /// </summary>
+        /// <value>
+        /// The supported extension type(s).
+        /// </value>
+        public override List<string> ExtensionTypes
+        {
+            get { return new List<string> { ".mdf" }; }
+        }
+
         // Disable compiler warning: value never assigned
 #pragma warning disable 0649
 
