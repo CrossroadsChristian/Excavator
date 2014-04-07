@@ -501,7 +501,7 @@ namespace Excavator.F1
                     if ( primaryHouseholdCampus != null )
                     {
                         familyGroup.CampusId = CampusList.Where( c => c.Name.StartsWith( primaryHouseholdCampus ) || c.ShortCode == primaryHouseholdCampus )
-                            .Select( c => (int?)c.Id ).FirstOrDefault();
+                             .Select( c => (int?)c.Id ).FirstOrDefault();
                     }
 
                     familyList.Add( familyGroup );
@@ -693,7 +693,6 @@ namespace Excavator.F1
                                 secondaryEmail = person.Email;
                                 person.Email = userEmail.Left( 75 );
                                 person.IsEmailActive = isEnabled;
-                                person.DoNotEmail = !isEnabled ?? true;
                                 person.EmailNote = userTitle;
                             }
                             else if ( !person.Email.Equals( userEmail ) )

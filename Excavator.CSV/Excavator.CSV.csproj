@@ -82,6 +82,10 @@
       <HintPath>..\Excavator\Packages\ImageResizer.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="LumenWorks.Framework.IO">
+      <HintPath>..\Excavator\Packages\LumenWorks.Framework.IO.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Newtonsoft.Json">
       <HintPath>..\Excavator\Packages\Newtonsoft.Json.dll</HintPath>
       <Private>False</Private>

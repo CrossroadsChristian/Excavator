@@ -24,7 +24,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
 using Microsoft.Win32;
-using OrcaMDF.Core.Engine;
 
 namespace Excavator
 {
@@ -238,23 +237,21 @@ namespace Excavator
         /// <param name="e">The <see cref="DoWorkEventArgs"/> instance containing the event data.</param>
         private void bwPreview_DoWork( object sender, DoWorkEventArgs e )
         {
+            var selectedExcavator = (string)e.Argument;
             var filePicker = new OpenFileDialog();
-            //mdfPicker.AddExtension = false;
-            var supportedExtensions = frontEndLoader.excavatorTypes.Select( t => t.FullName + " |*" + t.ExtensionType ).ToList();
+
+            var supportedExtensions = frontEndLoader.excavatorTypes.Where( t => t.FullName.Equals( selectedExcavator ) )
+                .Select( t => t.FullName + " |*" + t.ExtensionType ).ToList();
             filePicker.Filter = string.Join( "|", supportedExtensions );
 
+            //filePicker.AddExtension = false;
             if ( filePicker.ShowDialog() == true )
             {
-                var database = new Database( filePicker.FileName );
-                if ( database != null )
+                excavator = frontEndLoader.excavatorTypes.Where( t => t.FullName.Equals( selectedExcavator ) ).FirstOrDefault();
+                if ( excavator != null )
                 {
-                    var dbType = (string)e.Argument;
-                    excavator = frontEndLoader.excavatorTypes.Where( t => t.FullName.Equals( dbType ) ).FirstOrDefault();
-                    if ( excavator != null )
-                    {
-                        bool loadedSuccessfully = excavator.LoadSchema( database );
-                        e.Cancel = !loadedSuccessfully;
-                    }
+                    bool loadedSuccessfully = excavator.LoadSchema( filePicker.FileName );
+                    e.Cancel = !loadedSuccessfully;
                 }
             }
             else

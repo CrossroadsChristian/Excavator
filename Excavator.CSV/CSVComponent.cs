@@ -20,7 +20,9 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.Composition;
 using System.Configuration;
+using System.IO;
 using System.Linq;
+using LumenWorks.Framework.IO.Csv;
 using Rock.Data;
 using Rock.Model;
 using Rock.Web.Cache;
@@ -57,59 +59,61 @@ namespace Excavator.CSV
             get { return ".csv"; }
         }
 
-        // Disable compiler warning: value never assigned
-#pragma warning disable 0649
+        /// <summary>
+        /// The local database
+        /// </summary>
+        public CachedCsvReader Database;
 
         /// <summary>
         /// The person assigned to do the import
         /// </summary>
         private PersonAlias ImportPersonAlias;
 
-#pragma warning restore
-
         #endregion
 
         #region Methods
+
+        /// <summary>
+        /// Loads the database for this instance.
+        /// </summary>
+        /// <param name="fileName"></param>
+        /// <returns></returns>
+        public override bool LoadSchema( string fileName )
+        {
+            Database = new CachedCsvReader( new StringReader( fileName ), true );
+
+            return true;
+        }
 
         /// <summary>
         /// Transforms the data from the dataset.
         /// </summary>
         public override int TransformData( string importUser = null )
         {
-            // Report progress to the main thread so it can update the UI
             ReportProgress( 0, "Starting import..." );
 
-            // Connects to the source file (already loaded in memory by the UI)
-
-            // Hold a count of how many records have been imported
             int completed = 0;
+            var personService = new PersonService();
+            var importPerson = personService.GetByFullName( importUser, includeDeceased: false, allowFirstNameOnly: true ).FirstOrDefault();
+            if ( importPerson == null )
+            {
+                importPerson = personService.Queryable().FirstOrDefault();
+            }
 
-            // Pick a method to save data to Rock: #1 (simple) or #2 (fast)
+            ImportPersonAlias = new PersonAliasService().Get( importPerson.Id );
 
-            // Option #1. Standard way to put data in Rock
-            //foreach ( var dataRow in tableData )
-            //{
-            // Create a Rock model and assign data to it
             Person person = new Person();
+            person.CreatedByPersonAliasId = ImportPersonAlias.Id;
 
             RockTransactionScope.WrapTransaction( () =>
             {
-                // Instantiate the object model service
-                var personService = new PersonService();
-
-                // If it's a new model, add it to the database first
+                personService = new PersonService();
                 personService.Add( person, ImportPersonAlias );
-
-                // Save the data to the database
                 personService.Save( person, ImportPersonAlias );
             } );
 
             completed++;
-            //}
 
-            // end option #1
-
-            // Report the final imported count
             ReportProgress( 100, string.Format( "Completed import: {0:N0} records imported.", completed ) );
             return completed;
         }

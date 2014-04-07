@@ -24,9 +24,6 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
-using LumenWorks.Framework.IO.Csv;
-using OrcaMDF.Core.Engine;
-using OrcaMDF.Core.MetaData;
 
 namespace Excavator
 {
@@ -43,16 +40,6 @@ namespace Excavator
     public abstract class ExcavatorComponent
     {
         #region Fields
-
-        /// <summary>
-        /// The local database
-        /// </summary>
-        public Database database;
-
-        /// <summary>
-        /// The local csv
-        /// </summary>
-        public CachedCsvReader csv;
 
         /// <summary>
         /// Gets the full name of the excavator type.
@@ -97,43 +84,10 @@ namespace Excavator
         }
 
         /// <summary>
-        /// Loads the database for this instance.
+        /// Loads the database into memory and fills a TableNode instance.
         /// </summary>
         /// <returns></returns>
-        public bool LoadSchema( object db )
-        {
-            // Currently only imports MDF's (using OrcaMDF framework)
-            database = (Database)db;
-            TableNodes = new List<DatabaseNode>();
-            var scanner = new DataScanner( database );
-            var tables = database.Dmvs.Tables;
-
-            foreach ( var table in tables.Where( t => !t.IsMSShipped ).OrderBy( t => t.Name ) )
-            {
-                var rows = scanner.ScanTable( table.Name );
-                var tableItem = new DatabaseNode();
-                tableItem.Name = table.Name;
-                tableItem.NodeType = typeof( object );
-
-                var rowData = rows.FirstOrDefault();
-                if ( rowData != null )
-                {
-                    foreach ( var column in rowData.Columns )
-                    {
-                        var childItem = new DatabaseNode();
-                        childItem.Name = column.Name;
-                        childItem.NodeType = Extensions.GetSQLType( column.Type );
-                        childItem.Table.Add( tableItem );
-                        tableItem.Columns.Add( childItem );
-                        tableItem.Value = rowData[column] ?? DBNull.Value;
-                    }
-                }
-
-                TableNodes.Add( tableItem );
-            }
-
-            return TableNodes.Count() > 0 ? true : false;
-        }
+        public abstract bool LoadSchema( string fileName );
 
         /// <summary>
         /// Previews the data.

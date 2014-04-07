@@ -59,6 +59,11 @@ namespace Excavator.F1
         }
 
         /// <summary>
+        /// The local database
+        /// </summary>
+        public Database Database;
+
+        /// <summary>
         /// The person assigned to do the import
         /// </summary>
         private PersonAlias ImportPersonAlias;
@@ -100,6 +105,45 @@ namespace Excavator.F1
         #region Methods
 
         /// <summary>
+        /// Loads the database for this instance.
+        /// </summary>
+        /// <param name="fileName"></param>
+        /// <returns></returns>
+        public override bool LoadSchema( string fileName )
+        {
+            Database = new Database( fileName );
+            TableNodes = new List<DatabaseNode>();
+            var scanner = new DataScanner( Database );
+            var tables = Database.Dmvs.Tables;
+
+            foreach ( var table in tables.Where( t => !t.IsMSShipped ).OrderBy( t => t.Name ) )
+            {
+                var rows = scanner.ScanTable( table.Name );
+                var tableItem = new DatabaseNode();
+                tableItem.Name = table.Name;
+                tableItem.NodeType = typeof( object );
+
+                var rowData = rows.FirstOrDefault();
+                if ( rowData != null )
+                {
+                    foreach ( var column in rowData.Columns )
+                    {
+                        var childItem = new DatabaseNode();
+                        childItem.Name = column.Name;
+                        childItem.NodeType = Extensions.GetSQLType( column.Type );
+                        childItem.Table.Add( tableItem );
+                        tableItem.Columns.Add( childItem );
+                        tableItem.Value = rowData[column] ?? DBNull.Value;
+                    }
+                }
+
+                TableNodes.Add( tableItem );
+            }
+
+            return TableNodes.Count() > 0 ? true : false;
+        }
+
+        /// <summary>
         /// Transforms the data from the dataset.
         /// </summary>
         /// <returns></returns>
@@ -136,7 +180,7 @@ namespace Excavator.F1
                     tableList = tableList.OrderByDescending( n => tableDependencies.IndexOf( n.Name ) ).ToList();
                 }
 
-                var scanner = new DataScanner( database );
+                var scanner = new DataScanner( Database );
                 foreach ( var table in tableList )
                 {
                     if ( !tableDependencies.Contains( table.Name ) )
