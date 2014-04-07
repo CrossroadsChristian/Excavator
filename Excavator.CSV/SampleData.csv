@@ -1,0 +1,3 @@
+FamilyID,FamilyName,PersonID,RecordType,RecordStatus,FirstName,NickName,LastName,DOB,Gender,Email,EmailIsActive,ConnectionStatus,MaritalStatus,FamilyRole,HomePhone,MobilePhone,WorkPhone,AddressType,Address1,Address2,City,State,Zip,Latitude,Longitude,MembershipDate,BaptismDate,FirstVisit,School,Employer,Position,Custom1,Custom2
+2,Decker Family,2,Person,Active,Theodore,Ted,Decker,2/10/76,Male,ted@rocksoliddemochurch.com,Yes,Member,Married,Adult,6235553322,6235553322,6025552911,Home,1624 N 31st Dr,,Phoenix,AZ,85029,33.593043,-112.126518,,9/13/01,12/15/12,,Rock Solid Church,Developer,,
+2,Decker Family,3,Person,Active,Cynthia,Cindy,Decker,3/10/77,Female,cindy@rocksoliddemochurch.com,Yes,Member,Married,Adult,,6392849127,,,,,,,,,,,,9/13/01,,,,,
