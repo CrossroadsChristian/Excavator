@@ -62,7 +62,7 @@ namespace Excavator.CSV
         /// <summary>
         /// The local database
         /// </summary>
-        public CachedCsvReader Database;
+        public CsvReader Database;
 
         /// <summary>
         /// The person assigned to do the import
@@ -80,9 +80,32 @@ namespace Excavator.CSV
         /// <returns></returns>
         public override bool LoadSchema( string fileName )
         {
-            Database = new CachedCsvReader( new StringReader( fileName ), true );
+            Database = new CsvReader( new StreamReader( fileName ), true );
+            Database.MissingFieldAction = MissingFieldAction.ReplaceByNull;
+            TableNodes = new List<DatabaseNode>();
 
-            return true;
+            var tableItem = new DatabaseNode();
+            tableItem.Name = Path.GetFileNameWithoutExtension( fileName );
+            int columnIndex = 0;
+
+            var firstRow = Database.ElementAtOrDefault( 0 );
+            if ( firstRow != null )
+            {
+                foreach ( var columnName in Database.GetFieldHeaders() )
+                {
+                    var childItem = new DatabaseNode();
+                    childItem.Name = columnName;
+                    childItem.NodeType = typeof( string );
+                    childItem.Value = firstRow[columnIndex] ?? string.Empty;
+                    childItem.Table.Add( tableItem );
+                    tableItem.Columns.Add( childItem );
+                    columnIndex++;
+                }
+
+                TableNodes.Add( tableItem );
+            }
+
+            return TableNodes.Count() > 0 ? true : false;
         }
 
         /// <summary>

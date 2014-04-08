@@ -121,8 +121,7 @@ namespace Excavator.F1
                 var rows = scanner.ScanTable( table.Name );
                 var tableItem = new DatabaseNode();
                 tableItem.Name = table.Name;
-                tableItem.NodeType = typeof( object );
-
+                
                 var rowData = rows.FirstOrDefault();
                 if ( rowData != null )
                 {
@@ -131,9 +130,9 @@ namespace Excavator.F1
                         var childItem = new DatabaseNode();
                         childItem.Name = column.Name;
                         childItem.NodeType = Extensions.GetSQLType( column.Type );
+                        childItem.Value = rowData[column] ?? DBNull.Value;
                         childItem.Table.Add( tableItem );
                         tableItem.Columns.Add( childItem );
-                        tableItem.Value = rowData[column] ?? DBNull.Value;
                     }
                 }
 

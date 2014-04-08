@@ -22,3 +22,5 @@ StyleCop.Cache
 [Dd]ebug*/
 [Rr]elease*/
 /scaffolding.config
+/NEWSPRING.mdf
+/SampleData.csv
