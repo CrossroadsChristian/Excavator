@@ -97,8 +97,7 @@ namespace Excavator
         public DataTable PreviewData( string nodeId )
         {
             var node = TableNodes.Where( n => n.Id.Equals( nodeId ) || n.Columns.Any( c => c.Id == nodeId ) ).FirstOrDefault();
-
-            if ( node != null )
+            if ( node != null && node.Columns.Any() )
             {
                 var dataTable = new DataTable();
                 foreach ( var column in node.Columns )
@@ -109,14 +108,11 @@ namespace Excavator
                 var rowPreview = dataTable.NewRow();
                 foreach ( var column in node.Columns )
                 {
-                    rowPreview[column.Name] = node.Value ?? DBNull.Value;
+                    rowPreview[column.Name] = column.Value ?? DBNull.Value;
                 }
 
-                if ( rowPreview != null )
-                {
-                    dataTable.Rows.Add( rowPreview );
-                    return dataTable;
-                }
+                dataTable.Rows.Add( rowPreview );
+                return dataTable;
             }
 
             return null;
