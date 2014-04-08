@@ -221,7 +221,7 @@ namespace Excavator
             else
             {
                 lblDbConnect.Style = (Style)FindResource( "labelStyleAlert" );
-                lblDbConnect.Content = "Please select a valid source and destination database.";
+                lblDbConnect.Content = "Please select a valid source and destination.";
                 lblDbConnect.Visibility = Visibility.Visible;
             }
         }
@@ -271,7 +271,7 @@ namespace Excavator
             if ( e.Cancelled != true )
             {
                 lblDbUpload.Style = (Style)FindResource( "labelStyleSuccess" );
-                lblDbUpload.Content = "Successfully read the database file";
+                lblDbUpload.Content = "Successfully read the import file";
             }
 
             lblDbUpload.Visibility = Visibility.Visible;
