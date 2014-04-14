@@ -244,7 +244,6 @@ namespace Excavator
                 .Select( t => t.FullName + " |*" + t.ExtensionType ).ToList();
             filePicker.Filter = string.Join( "|", supportedExtensions );
 
-            //filePicker.AddExtension = false;
             if ( filePicker.ShowDialog() == true )
             {
                 excavator = frontEndLoader.excavatorTypes.Where( t => t.FullName.Equals( selectedExcavator ) ).FirstOrDefault();
