@@ -77,7 +77,7 @@ namespace Excavator.CSV
         /// <summary>
         /// All the people who've been imported
         /// </summary>
-        private Dictionary<string, int?> ImportedPeople;
+        private Dictionary<int, string> ImportedPeople;
 
         /// <summary>
         /// The list of current campuses
@@ -148,48 +148,24 @@ namespace Excavator.CSV
         /// </summary>
         private void CheckExistingImport( string importUser )
         {
-            var rockContext = new RockContext();
-            var personService = new PersonService( rockContext );
-            var attributeService = new AttributeService( rockContext );
-            var attributeValueService = new AttributeValueService( rockContext );
+            var lookupContext = new RockContext();
+            var personService = new PersonService( lookupContext );
             var importPerson = personService.GetByFullName( importUser, includeDeceased: false, allowFirstNameOnly: true ).FirstOrDefault();
             if ( importPerson == null )
             {
                 importPerson = personService.Queryable().FirstOrDefault();
             }
 
-            ImportPersonAlias = new PersonAliasService().Get( importPerson.Id );
+            ImportPersonAlias = new PersonAliasService( lookupContext ).Get( importPerson.Id );
 
             PersonEntityTypeId = EntityTypeCache.Read( "Rock.Model.Person" ).Id;
             var textFieldTypeId = FieldTypeCache.Read( new Guid( Rock.SystemGuid.FieldType.TEXT ) ).Id;
 
-            var personAttributes = attributeService.GetByEntityTypeId( PersonEntityTypeId ).ToList();
-            var importIdentifier = personAttributes.FirstOrDefault( a => a.Key == "ExcavatorImportId" );
-            if ( importIdentifier == null )
-            {
-                importIdentifier = new Rock.Model.Attribute();
-                importIdentifier.Key = "ExcavatorImportId";
-                importIdentifier.Name = "Excavator Import Id";
-                importIdentifier.FieldTypeId = textFieldTypeId;
-                importIdentifier.EntityTypeId = PersonEntityTypeId;
-                importIdentifier.EntityTypeQualifierValue = string.Empty;
-                importIdentifier.EntityTypeQualifierColumn = string.Empty;
-                importIdentifier.Description = "The identifier for this person imported using Excavator";
-                importIdentifier.DefaultValue = string.Empty;
-                importIdentifier.IsMultiValue = false;
-                importIdentifier.IsRequired = false;
-                importIdentifier.Order = 0;
-
-                attributeService.Add( importIdentifier, ImportPersonAlias );
-                attributeService.Save( importIdentifier, ImportPersonAlias );
-                personAttributes.Add( importIdentifier );
-            }
-
             ReportProgress( 0, "Checking for existing people..." );
-            ImportedPeople = attributeValueService.GetByAttributeId( importIdentifier.Id )
-                .ToDictionary( av => av.Value, av => av.EntityId );
+            ImportedPeople = personService.Queryable().Where( p => p.ForeignId != null )
+                .ToDictionary( p => p.Id, p => p.ForeignId );
 
-            CampusList = new CampusService( rockContext ).Queryable().ToList();
+            CampusList = new CampusService( lookupContext ).Queryable().ToList();
         }
 
         /// <summary>
@@ -197,9 +173,10 @@ namespace Excavator.CSV
         /// </summary>
         private void MapFamilyData()
         {
-            var groupTypeRoleService = new GroupTypeRoleService();
-            var attributeService = new AttributeService();
-            var dvService = new DefinedValueService();
+            var lookupContext = new RockContext();
+            var groupTypeRoleService = new GroupTypeRoleService( lookupContext );
+            var attributeService = new AttributeService( lookupContext );
+            var dvService = new DefinedValueService( lookupContext );
             var familyList = new List<Group>();
             int currentFamilyId = 0;
             Group familyGroup = new Group();
@@ -233,7 +210,7 @@ namespace Excavator.CSV
                 .Where( dv => dv.DefinedType.Guid == new Guid( Rock.SystemGuid.DefinedType.PERSON_TITLE ) ).ToList();
 
             // Note type: Comment
-            int noteCommentTypeId = new NoteTypeService().Get( new Guid( "7E53487C-D650-4D85-97E2-350EB8332763" ) ).Id;
+            int noteCommentTypeId = new NoteTypeService( lookupContext ).Get( new Guid( "7E53487C-D650-4D85-97E2-350EB8332763" ) ).Id;
 
             // Group roles: Adult, Child, others
             int adultRoleId = groupTypeRoleService.Get( new Guid( Rock.SystemGuid.GroupRole.GROUPROLE_FAMILY_MEMBER_ADULT ) ).Id;
@@ -245,8 +222,7 @@ namespace Excavator.CSV
             // Look up additional Person attributes (existing)
             var personAttributes = attributeService.GetByEntityTypeId( PersonEntityTypeId ).ToList();
 
-            // Cached attributes: ImportId, PreviousChurch, Position, Employer, School
-            var importIdAttribute = AttributeCache.Read( personAttributes.FirstOrDefault( a => a.Key == "ExcavatorImportId" ) );
+            // Cached attributes: PreviousChurch, Position, Employer, School
             var membershipDateAttribute = AttributeCache.Read( personAttributes.FirstOrDefault( a => a.Key == "MembershipDate" ) );
             var baptismDateAttribute = AttributeCache.Read( personAttributes.FirstOrDefault( a => a.Key == "BaptismDate" ) );
             var firstVisitAttribute = AttributeCache.Read( personAttributes.FirstOrDefault( a => a.Key == "FirstVisit" ) );
@@ -264,6 +240,7 @@ namespace Excavator.CSV
                 if ( row != null )
                 {
                     int groupRoleId = adultRoleId;
+                    var personIdValue = row[PersonId] as string;
                     int rowPersonId = row[PersonId].AsType<int>();
                     int rowFamilyId = row[FamilyId].AsType<int>();
                     var rowFamilyName = row[FamilyName];
@@ -275,6 +252,7 @@ namespace Excavator.CSV
                     }
 
                     Person person = new Person();
+                    person.ForeignId = personIdValue;
                     person.RecordTypeValueId = personRecordTypeId;
                     person.CreatedByPersonAliasId = ImportPersonAlias.Id;
                     person.FirstName = row[FirstName];
@@ -407,19 +385,6 @@ namespace Excavator.CSV
                     // Map Person attributes
                     person.Attributes = new Dictionary<string, AttributeCache>();
                     person.AttributeValues = new Dictionary<string, List<AttributeValue>>();
-
-                    var personIdValue = row[PersonId] as string;
-                    if ( personIdValue != null )
-                    {
-                        person.Attributes.Add( importIdAttribute.Key, importIdAttribute );
-                        person.AttributeValues.Add( importIdAttribute.Key, new List<AttributeValue>() );
-                        person.AttributeValues[importIdAttribute.Key].Add( new AttributeValue()
-                        {
-                            AttributeId = importIdAttribute.Id,
-                            Value = personIdValue,
-                            Order = 0
-                        } );
-                    }
 
                     DateTime membershipDateValue;
                     if ( DateTime.TryParse( row[MembershipDate], out membershipDateValue ) )
