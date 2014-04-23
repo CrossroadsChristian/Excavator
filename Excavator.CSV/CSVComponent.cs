@@ -136,6 +136,7 @@ namespace Excavator.CSV
             ReportProgress( 0, "Starting import..." );
             CheckExistingImport( importUser );
 
+            // TODO: only import things that the user checked
             var columnList = TableNodes.Where( n => n.Checked != false ).ToList();
 
             MapFamilyData();
