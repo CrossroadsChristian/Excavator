@@ -200,6 +200,9 @@ namespace Excavator.F1
             var familyList = new List<Group>();
             var visitorList = new List<Group>();
 
+            var schoolList = new List<DefinedValue>();
+            var newSchool = new DefinedValue();
+
             // Marital statuses: Married, Single, Separated, etc
             List<DefinedValue> maritalStatusTypes = dvService.Queryable()
                 .Where( dv => dv.DefinedType.Guid == new Guid( Rock.SystemGuid.DefinedType.PERSON_MARITAL_STATUS ) ).ToList();
@@ -334,6 +337,7 @@ namespace Excavator.F1
                         }
 
                         string memberStatus = row["Status_Name"] as string;
+                        string subStatus = row["SubStatus_Name"] as string; //To match Member Status' we have in F1
                         if ( memberStatus == "Member" )
                         {
                             person.ConnectionStatusValueId = connectionStatusTypes.FirstOrDefault( dv => dv.Guid == new Guid( Rock.SystemGuid.DefinedValue.PERSON_CONNECTION_STATUS_MEMBER ) ).Id;
@@ -350,6 +354,27 @@ namespace Excavator.F1
                             person.RecordStatusValueId = recordStatusInactiveId;
                             person.RecordStatusReasonValueId = recordStatusReasons.Where( dv => dv.Value == "Deceased" )
                                 .Select( dv => dv.Id ).FirstOrDefault();
+                        }
+                        else if (memberStatus == "Dropped") //Crossroads Related
+                        {
+                            if (subStatus == "Member")
+                            {
+                                person.RecordStatusValueId = recordStatusInactiveId;
+                                person.RecordStatusReasonValueId = recordStatusReasons.Where(dv => dv.Value == "Dropped Member")
+                                    .Select(dv => dv.Id).FirstOrDefault();
+                            }
+                            else if (subStatus == "Non-Member")
+                            {
+                                person.RecordStatusValueId = recordStatusInactiveId;
+                                person.RecordStatusReasonValueId = recordStatusReasons.Where(dv => dv.Value == "Dropped Non-Member")
+                                    .Select(dv => dv.Id).FirstOrDefault();
+                            }
+                            else
+                            {
+                                person.RecordStatusValueId = recordStatusInactiveId;
+                                person.RecordStatusReasonValueId = recordStatusReasons.Where(dv => dv.Value == "Dropped")
+                                    .Select(dv => dv.Id).FirstOrDefault();
+                            }
                         }
                         else
                         {
@@ -372,6 +397,23 @@ namespace Excavator.F1
                         if ( status_comment != null )
                         {
                             person.SystemNote = status_comment;
+                            var noteList = new List<Note>(); //Seeing if these will add to the timeline.
+                            var note = new Note();
+                            note.ForeignId = string.Format("{0}", individualId);
+                            note.Text = status_comment;
+                            note.NoteTypeId = 1;
+                            noteList.Add(note);
+
+                            if (noteList.Any())
+                            {
+                                var rockContext = new RockContext();
+                                rockContext.WrapTransaction(() =>
+                                {
+                                    rockContext.Configuration.AutoDetectChangesEnabled = false;
+                                    rockContext.Notes.AddRange(noteList);
+                                    rockContext.SaveChanges(DisableAudit);
+                                });
+                            }
                         }
 
                         // Map F1 attributes

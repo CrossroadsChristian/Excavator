@@ -61,7 +61,7 @@ namespace Excavator.F1
         /// <summary>
         /// The local database
         /// </summary>
-        public Database Database;
+        public OrcaMDF.Core.Engine.Database Database;
 
         /// <summary>
         /// The person assigned to do the import
@@ -115,7 +115,7 @@ namespace Excavator.F1
         /// <returns></returns>
         public override bool LoadSchema( string fileName )
         {
-            Database = new Database( fileName );
+            Database = new OrcaMDF.Core.Engine.Database(fileName);
             TableNodes = new List<DatabaseNode>();
             var scanner = new DataScanner( Database );
             var tables = Database.Dmvs.Tables;
@@ -176,6 +176,8 @@ namespace Excavator.F1
             tableDependencies.Add( "Users" );                // needed for notes, user logins
             tableDependencies.Add( "Company" );              // needed to attribute any business items
             tableDependencies.Add( "Individual_Household" ); // needed for just about everything
+            //tableDependencies.Add("ActivityMinistry");       // needed for RLC and Attendance
+            //tableDependencies.Add("RLC");                    // needed for Attendance
 
             if ( isValidImport )
             {
@@ -216,6 +218,22 @@ namespace Excavator.F1
                                 MapPledge( scanner.ScanTable( table.Name ).AsQueryable() );
                                 break;
 
+                            case "Attribute":
+                                MapAttributes(scanner.ScanTable(table.Name).AsQueryable());
+                                break;
+
+                            case "ActivityMinistry":
+                                MapActivityMinistry(scanner.ScanTable(table.Name).AsQueryable());
+                                break;
+
+                            case "RLC":
+                                MapRLC(scanner.ScanTable(table.Name).AsQueryable());
+                                break;
+
+                            case "Attendance":
+                                MapAttendance(scanner.ScanTable(table.Name).AsQueryable());
+                                break;
+
                             default:
                                 break;
                         }
@@ -237,6 +255,14 @@ namespace Excavator.F1
                         else if ( table.Name == "Users" )
                         {
                             MapUsers( scanner.ScanTable( table.Name ).AsQueryable() );
+                        }
+                        else if (table.Name == "ActivityMinistry")
+                        {
+                            MapActivityMinistry(scanner.ScanTable(table.Name).AsQueryable());
+                        }
+                        else if (table.Name == "RLC")
+                        {
+                            MapRLC(scanner.ScanTable(table.Name).AsQueryable());
                         }
                     }
                 }
