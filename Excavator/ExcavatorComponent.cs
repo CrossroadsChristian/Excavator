@@ -159,7 +159,18 @@ namespace Excavator
             }
         }
 
+        /// <summary>
+        /// Logs the exception.
+        /// </summary>
+        /// <param name="category">The category.</param>
+        /// <param name="message">The message.</param>
+        protected void LogException( string category, string message )
+        {
+            App.LogException( category, message );
+        }
+        
         #endregion
+        
     }
 
     /// <summary>
@@ -171,7 +182,7 @@ namespace Excavator
         /// Holds a list of all the excavator types
         /// </summary>
         [ImportMany( typeof( ExcavatorComponent ) )]
-        public List<ExcavatorComponent> excavatorTypes = new List<ExcavatorComponent>();
+        public IEnumerable<ExcavatorComponent> excavatorTypes = new List<ExcavatorComponent>();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FrontEndLoader"/> class.
@@ -182,15 +193,15 @@ namespace Excavator
             var catalog = new AggregateCatalog();
             if ( Directory.Exists( extensionFolder ) )
             {
-                catalog.Catalogs.Add( new DirectoryCatalog( extensionFolder ) );
+                catalog.Catalogs.Add( new DirectoryCatalog( extensionFolder, "Excavator.*.dll" ) );
             }
 
             var currentDirectory = Path.GetDirectoryName( Application.ExecutablePath );
-            catalog.Catalogs.Add( new DirectoryCatalog( currentDirectory ) );
+            catalog.Catalogs.Add( new DirectoryCatalog( currentDirectory, "Excavator.*.dll" ) );
 
             try
             {
-                var container = new CompositionContainer( catalog );
+                var container = new CompositionContainer( catalog, true );
                 container.ComposeParts( this );
             }
             catch
