@@ -35,6 +35,7 @@ namespace Excavator.F1
         private void MapActivityMinistry(IQueryable<Row> tableData)
         {
             var lookupContext = new RockContext();
+            var rockContext = new RockContext();
 
             // Add an Attribute for the unique F1 Ministry Id
             int groupEntityTypeId = EntityTypeCache.Read("Rock.Model.Group").Id;
@@ -83,21 +84,25 @@ namespace Excavator.F1
             }
 
             // Get previously imported Ministries
-            var importedMinistries = new AttributeValueService(lookupContext).GetByAttributeId(ministryAttributeId)
-                .Select(av => new { MinistryId = av.Value.AsType<int?>(), MinistryName = av.ForeignId })
-                .ToDictionary(t => t.MinistryId, t => t.MinistryName);
+            List<AttributeValue> importedMinistriesAVList = new AttributeValueService(lookupContext).GetByAttributeId(ministryAttributeId).ToList();
 
             // Get previously imported Activities
-            var importedActivities = new AttributeValueService(lookupContext).GetByAttributeId(activityAttributeId)
-                .Select(av => new { ActivityId = av.Value.AsType<int?>(), ActivityName = av.ForeignId })
-                .ToDictionary(t => t.ActivityId, t => t.ActivityName);
+            List<AttributeValue> importedActivitiesAVList = new AttributeValueService( lookupContext ).GetByAttributeId( activityAttributeId ).ToList();
+
+
+            int importedMinistriesCount = 0;
+            int importedActivitiesCount = 0;
+
+            if ( importedMinistriesAVList.Any() ) { importedMinistriesCount = importedMinistriesAVList.Count(); }
+            if ( importedActivitiesAVList.Any() ) { importedActivitiesCount = importedActivitiesAVList.Count(); }
 
             int completed = 0;
             int totalRows = tableData.Count();
             int percentage = (totalRows - 1) / 100 + 1;
+
             ReportProgress(0, string.Format("Verifying ministry import ({0:N0} found).", totalRows));
-            ReportProgress(0, string.Format("Previously Imported Ministries ({0:N0} found).", importedMinistries.Count()));
-            ReportProgress(0, string.Format("Previously Imported Activities ({0:N0} found).", importedActivities.Count()));
+            ReportProgress(0, string.Format("Previously Imported Ministries ({0:N0} found).", importedMinistriesCount));
+            ReportProgress(0, string.Format("Previously Imported Activities ({0:N0} found).", importedActivitiesCount));
 
             var newAreas = new List<GroupType>();
             var newCategories = new List<GroupType>();
@@ -105,9 +110,19 @@ namespace Excavator.F1
             foreach (var row in tableData)
             {
                 int? ministryId = row["Ministry_ID"] as int?;
-                if (ministryId != null && !importedMinistries.ContainsKey(ministryId)) //Checks AttributeValue table to see if it has already been imported.
+                string ministryName = row["Ministry_Name"] as string;
+                string ministryIdString = Convert.ToString( ministryId );
+
+                //GroupType importedMinistriesGTList = new GroupTypeService( lookupContext ).Queryable().Where( g => g.Name == ministryName && g.ForeignId == ( Convert.ToString( ministryId ) + 'm' ) ).FirstOrDefault();
+                int? importedMinistry = new AttributeValueService( lookupContext ).Queryable().Where( a => a.Value == ministryIdString && a.ForeignId == ministryName ).Select( a => a.Id ).FirstOrDefault();
+                //AttributeValue importedMinistry = new AttributeValueService(lookupContext).Queryable().Where(a => a.Value == Convert.ToString(ministryId) && a.ForeignId == ministryName).FirstOrDefault();
+                //AttributeValue importedMinistry = importedMinistriesAVList.Where(av => av.Value == Convert.ToString(ministryId)).FirstOrDefault();
+               // if (ministryId != null && !importedMinistries.ContainsKey(ministryId)) //Checks AttributeValue table to see if it has already been imported.
+                //if ( ministryId != null && importedMinistriesAVList.Find( x => x.Value == Convert.ToString( ministryId ) ) == null ) //Checks AttributeValue table to see if it has already been imported.
+                if ( ministryId != null && importedMinistry == 0) //Checks AttributeValue table to see if it has already been imported.
+
                 {
-                    string ministryName = row["Ministry_Name"] as string;
+                    
                     bool? ministryIsActive = row["Ministry_Active"] as bool?;
 
                     if (ministryName != null)
@@ -131,40 +146,46 @@ namespace Excavator.F1
                         ministryCategory.AttendancePrintTo = 0;
                         ministryCategory.Order = 0;
                         ministryCategory.LocationSelectionMode = 0;
-                        ministryCategory.Guid = new Guid();
-                        ministryCategory.ForeignId = ministryId.ToString() + 'm'; //F1 Ministry ID - adding 'm' just incase there is an activity with the same ID
+                        ministryCategory.Guid = Guid.NewGuid();
+                        ministryCategory.ForeignId = ministryId.ToString(); //F1 Ministry ID - adding 'm' just incase there is an activity with the same ID
                         ministryCategory.GroupTypePurposeValueId = DefinedValueCache.Read(Rock.SystemGuid.DefinedValue.GROUPTYPE_PURPOSE_CHECKIN_TEMPLATE).Id; // ID = 142 in my db
 
                         //Creates the AttributeValue data for the Ministry
                         ministryAttribute.IsSystem = false;
-                        ministryAttribute.AttributeId = activityAttributeId;
+                        ministryAttribute.AttributeId = ministryAttributeId;
                         ministryAttribute.Value = ministryId.ToString();    //So the Value is the F1MinistryID
-                        ministryAttribute.Guid = new Guid();
+                        ministryAttribute.Guid = Guid.NewGuid();
                         ministryAttribute.ForeignId = ministryName.Trim();
 
                         newCategories.Add(ministryCategory);
                         ministryAttributeList.Add(ministryAttribute);
 
                         //Saves it to the DB so that I can check for its ID in the table
-                        if (newCategories.Any())
+                        if ( newCategories.Any() || ministryAttributeList.Any() )
                         {
-                            var rockContext = new RockContext();
-                            rockContext.WrapTransaction(() =>
+                            //var rockContext = new RockContext();
+                            if ( newCategories.Any() )
                             {
-                                rockContext.Configuration.AutoDetectChangesEnabled = false;
-                                rockContext.GroupTypes.AddRange(newCategories);
-                                rockContext.SaveChanges(DisableAudit);
-                            });
-                        }
-                        if (ministryAttributeList.Any())
-                        {
-                            var rockContext = new RockContext();
-                            rockContext.WrapTransaction(() =>
+                                //var rockContext = new RockContext();
+                                rockContext.WrapTransaction( () =>
+                                {
+                                    rockContext.Configuration.AutoDetectChangesEnabled = false;
+                                    rockContext.GroupTypes.AddRange( newCategories );
+                                    rockContext.SaveChanges( DisableAudit );
+                                } );
+                                newCategories.Clear();
+                            }
+                            if ( ministryAttributeList.Any() )
                             {
-                                rockContext.Configuration.AutoDetectChangesEnabled = false;
-                                rockContext.AttributeValues.AddRange(ministryAttributeList);
-                                rockContext.SaveChanges(DisableAudit);
-                            });
+                                //var rockContext = new RockContext();
+                                rockContext.WrapTransaction( () =>
+                                {
+                                    rockContext.Configuration.AutoDetectChangesEnabled = false;
+                                    rockContext.AttributeValues.AddRange( ministryAttributeList );
+                                    rockContext.SaveChanges( DisableAudit );
+                                } );
+                                ministryAttributeList.Clear();
+                            }
                         }
                     }
                 }
@@ -174,24 +195,34 @@ namespace Excavator.F1
 
                 //Checks AttributeValue table to see if it has already been imported.
                 int? activityId = row["Activity_ID"] as int?;
-                if (activityId != null && !importedActivities.ContainsKey(activityId))
+                string activityName = row["Activity_Name"] as string;
+                string activityIdstring = Convert.ToString( activityId );
+                ReportProgress( 0, string.Format( "Ministry ID {0}   Activity ID {1}.", ministryId, activityId ));
+
+                //if (activityId != null && !importedActivities.ContainsKey(activityId))
+                int? importedActivity = new AttributeValueService( lookupContext ).Queryable().Where( a => a.Value == activityIdstring && a.ForeignId == activityName ).Select(a => a.Id).FirstOrDefault();
+                //AttributeValue importedActivity = new AttributeValueService( lookupContext ).Queryable().Where( a => a.Value == Convert.ToString( activityId ) && a.ForeignId == activityName ).FirstOrDefault();
+                //AttributeValue importedActivity = importedActivitiesAVList.Where( av => av.Value == Convert.ToString( activityId ) ).FirstOrDefault();
+                //if ( activityId != null && importedActivitiesAVList.Find(x => x.Value == Convert.ToString(activityId)) == null )
+                if ( activityId != null && importedActivity == 0 )
                 {
 
-                    string activityName = row["Activity_Name"] as string;
+                    
                     bool? activityIsActive = row["Activity_Active"] as bool?;
 
                     //Looking up the Ministry GroupType ID so it can be used as the ParentGroupTypeId for the Activity GroupType/Area
                     var gtService = new GroupTypeService(lookupContext);
                     int parentGroupTypeId;
 
-                        string ministryID = ministryId.ToString() + 'm';
-                        parentGroupTypeId = gtService.Queryable().Where(gt => gt.ForeignId == ministryID).FirstOrDefault().Id;
+                        string ministryID = ministryId.ToString();
+                        parentGroupTypeId = gtService.Queryable().Where(gt => gt.ForeignId == ministryID).FirstOrDefault().Id; 
 
-                    GroupType parentGroupType = new GroupTypeService(lookupContext).Get(parentGroupTypeId);
+                    var parentGroupType = new GroupTypeService(rockContext).Get(parentGroupTypeId);
 
                     var activityArea = new GroupType();
                     var activityAV = new AttributeValue();
                     var activityAVList = new List<AttributeValue>();
+                    
 
                     // create new GroupType for activity (will set this as child to Ministry/Category)
                     activityArea.IsSystem = false;
@@ -206,16 +237,17 @@ namespace Excavator.F1
                     activityArea.AttendancePrintTo = 0;
                     activityArea.Order = 0;
                     activityArea.LocationSelectionMode = 0;
-                    activityArea.Guid = new Guid();
-                    activityArea.ForeignId = activityId.ToString() + 'a';  //F1 Activity ID
+                    activityArea.Guid = Guid.NewGuid();
+                    activityArea.ForeignId = activityId.ToString();  //F1 Activity ID
 
                     //Sets GroupTypeAssociation for the Categories and Areas
                         activityArea.ParentGroupTypes = new List<GroupType>();
                         activityArea.ParentGroupTypes.Add(parentGroupType);
 
+
                     //Create Activity AttributeValue Data
                     activityAV.IsSystem = false;
-                    activityAV.Guid = new Guid();
+                    activityAV.Guid = Guid.NewGuid();
                     activityAV.AttributeId = activityAttributeId;
                     activityAV.Value = activityId.ToString();
                     activityAV.ForeignId = activityName;
@@ -224,25 +256,30 @@ namespace Excavator.F1
                     newAreas.Add(activityArea);
                     completed++;
 
-                    if (newAreas.Any())
+                    if ( newAreas.Any() || activityAVList.Any() )
                     {
-                        var rockContext = new RockContext();
-                        rockContext.WrapTransaction(() =>
+                        //var rockContext = new RockContext();
+                        if ( newAreas.Any() )
                         {
-                            rockContext.Configuration.AutoDetectChangesEnabled = false;
-                            rockContext.GroupTypes.AddRange(newAreas);
-                            rockContext.SaveChanges(DisableAudit);
-                        });
-                    }
-                    if (activityAVList.Any())
-                    {
-                        var rockContext = new RockContext();
-                        rockContext.WrapTransaction(() =>
+                            rockContext.WrapTransaction( () =>
+                            {
+                                rockContext.Configuration.AutoDetectChangesEnabled = false;
+                                rockContext.GroupTypes.AddRange( newAreas );
+                                rockContext.SaveChanges( DisableAudit );
+                            } );
+                            newAreas.Clear();
+                        }
+                        if ( activityAVList.Any() )
                         {
-                            rockContext.Configuration.AutoDetectChangesEnabled = false;
-                            rockContext.AttributeValues.AddRange(activityAVList);
-                            rockContext.SaveChanges(DisableAudit);
-                        });
+                            //var rockContext = new RockContext();
+                            rockContext.WrapTransaction( () =>
+                            {
+                                rockContext.Configuration.AutoDetectChangesEnabled = false;
+                                rockContext.AttributeValues.AddRange( activityAVList );
+                                rockContext.SaveChanges( DisableAudit );
+                            } );
+                            activityAVList.Clear();
+                        }
                     }
                 }
                 if (completed % percentage < 1)
@@ -252,29 +289,31 @@ namespace Excavator.F1
                 }
                 else if (completed % ReportingNumber < 1)
                 {
-                    var rockContext = new RockContext();
-                    rockContext.WrapTransaction(() =>
-                    {
-                        rockContext.Configuration.AutoDetectChangesEnabled = false;
-                        rockContext.GroupTypes.AddRange(newCategories);
-                        rockContext.GroupTypes.AddRange(newAreas);
-                        rockContext.SaveChanges(DisableAudit);
-                    });
+                    //var rockContext = new RockContext();
+                    //rockContext.WrapTransaction(() =>
+                    //{
+                    //    rockContext.Configuration.AutoDetectChangesEnabled = false;
+                    //    rockContext.GroupTypes.AddRange(newCategories);
+                    //    rockContext.GroupTypes.AddRange(newAreas);
+                    //    rockContext.SaveChanges(DisableAudit);
+                    //});
 
                     ReportPartialProgress();
                 }
             }
-            if (newAreas.Any())
-            {
-                var rockContext = new RockContext();
-                rockContext.WrapTransaction(() =>
-                {
-                    rockContext.Configuration.AutoDetectChangesEnabled = false;
-                    rockContext.GroupTypes.AddRange(newAreas);
-                    rockContext.SaveChanges(DisableAudit);
-                });
-            }
-            ReportProgress(100, string.Format("Finished ministry import: {0:N0} ministries imported. Categories: {1:N0}  Areas: {2:N0}", completed, importedMinistries.Count(), importedActivities.Count()));
+            //if (newAreas.Any())
+            //{
+            //    //var rockContext = new RockContext();
+            //    rockContext.WrapTransaction(() =>
+            //    {
+            //        rockContext.Configuration.AutoDetectChangesEnabled = false;
+            //        rockContext.GroupTypes.AddRange(newAreas);
+            //        rockContext.SaveChanges(DisableAudit);
+            //    });
+            //}
+            //ReportProgress(100, string.Format("Finished ministry import: {0:N0} ministries imported. Categories: {1}  Areas: {2}", completed,importedMinistriesAVList.Count(), importedActivitiesAVList.Count()));
+            ReportProgress( 0, string.Format( "Categories: {0}  Areas: {1}", importedMinistriesAVList.Count(), importedActivitiesAVList.Count() ) );
+
         }
 
         /// <summary>
@@ -312,9 +351,11 @@ namespace Excavator.F1
             }
 
             // Get previously imported Ministries
-            var importedRLCs = new AttributeValueService(lookupContext).GetByAttributeId(rlcAttributeId)
-                .Select(av => new { RLCId = av.Value.AsType<int?>(), RLCName = av.ForeignId })
-                .ToDictionary(t => t.RLCId, t => t.RLCName);
+            //var importedRLCs = new AttributeValueService(lookupContext).GetByAttributeId(rlcAttributeId)
+            //    .Select(av => new { RLCId = av.Value.AsType<int?>(), RLCName = av.ForeignId })
+            //    .ToDictionary(t => t.RLCId, t => t.RLCName);
+
+            List<AttributeValue> importedRLCAVList = new AttributeValueService( lookupContext ).GetByAttributeId( rlcAttributeId ).ToList();
 
             var newRLCGroupList = new List<Group>();
 
@@ -333,9 +374,13 @@ namespace Excavator.F1
             foreach (var row in tableData)
             {
                 int? rlcId = row["RLC_ID"] as int?;
-                if (rlcId != null && !importedRLCs.ContainsKey(rlcId))
+                string rlcName = row["RLC_Name"] as string;
+                string rlcStringId = Convert.ToString(rlcId);
+
+                int? importedRLCs = new AttributeValueService( lookupContext ).Queryable().Where( a => a.Value == rlcStringId && a.ForeignId == rlcName ).Select( a => a.Id ).FirstOrDefault();
+
+                if (rlcId != null && importedRLCs == 0)
                 {
-                    string rlcName = row["RLC_Name"] as string;
 
                     if (rlcName != null)
                     {
@@ -349,27 +394,29 @@ namespace Excavator.F1
                         int? activityId = row["Activity_ID"] as int?;
 
                         //Searches for Parent ActivityId
-                        string activityID = activityId.ToString() + 'a';
-                        GroupType parentActivityArea = existingGroupTypes.Where(gt => gt.ForeignId == activityID).FirstOrDefault();
+                        string activityStringId = activityId.ToString();
+                        GroupType parentActivityArea = existingGroupTypes.Where(gt => gt.ForeignId == activityStringId).FirstOrDefault();
 
+                        ReportProgress( 0, string.Format( "." ) );
                         var rlcGroup = new Group();
+                        bool rlcIsActiveBool = (bool)rlcIsActive;
 
                         //Sets the Group values for RLC
                         rlcGroup.IsSystem = false;
                         rlcGroup.Name = rlcName.Trim();
                         rlcGroup.Order = 0;
-                        rlcGroup.Guid = new Guid();
+                        //rlcGroup.Guid = new Guid();
                         rlcGroup.GroupTypeId = parentActivityArea.Id;
-                        rlcGroup.IsActive = Convert.ToBoolean(rlcIsActive);
+                        rlcGroup.IsActive = rlcIsActiveBool;
                         rlcGroup.Description = roomDescription;
-                        rlcGroup.ForeignId = rlcId.ToString() + 'r';
+                        rlcGroup.ForeignId = rlcStringId;
 
                         var rlcAttributeValue = new AttributeValue();
 
                         //Sets the Attribute Values for RLC
                         rlcAttributeValue.IsSystem = false;
                         rlcAttributeValue.AttributeId = rlcAttributeId;
-                        rlcAttributeValue.Value = rlcId.ToString();
+                        rlcAttributeValue.Value = rlcStringId;
                         rlcAttributeValue.ForeignId = rlcName.Trim();
 
                         rlcAttributeValueList.Add(rlcAttributeValue);
@@ -393,6 +440,8 @@ namespace Excavator.F1
                                 rockContext.AttributeValues.AddRange(rlcAttributeValueList);
                                 rockContext.Groups.AddRange(newRLCGroupList);
                                 rockContext.SaveChanges(DisableAudit);
+                                newRLCGroupList.Clear();
+                                rlcAttributeValueList.Clear();
                             });
 
 
@@ -411,6 +460,8 @@ namespace Excavator.F1
                     rockContext.AttributeValues.AddRange(rlcAttributeValueList);
                     rockContext.Groups.AddRange(newRLCGroupList);
                     rockContext.SaveChanges(DisableAudit);
+                    newRLCGroupList.Clear();
+                    rlcAttributeValueList.Clear();
                 });
             }
             ReportProgress(100, string.Format("Finished ministry and activity import: {0:N0} imported.", completed));
@@ -446,12 +497,13 @@ namespace Excavator.F1
                 int? individualId = row["Individual_ID"] as int?;
                 int? householdId = row["Household_ID"] as int?;
                 int? associatedPersonId = GetPersonId(individualId, householdId);
+
                 if (associatedPersonId != null)
                 {
                     var familyGroup = groupMembershipList.Where(gm => gm.PersonId == (int)associatedPersonId)
                         .Select(gm => gm.Group).FirstOrDefault();
 
-                    if (familyGroup != null)
+                    if ( familyGroup != null )
                     {
                         var groupLocation = new GroupLocation();
 
@@ -462,63 +514,65 @@ namespace Excavator.F1
                         string country = row["country"] as string; // NOT A TYPO: F1 has property in lower-case
                         string zip = row["Postal_Code"] as string;
 
-                        Location familyAddress = lookupService.Get(street1, street2, city, state, zip, country);
-
                         /* Use CheckAddress.Get instead of Rock.Model.LocationService.Get (more details below) */
                         //Location familyAddress = CheckAddress.Get( street1, street2, city, state, zip, DisableAudit );
+                        Location familyAddress = lookupService.Get( street1, street2, city, state, zip, country );
 
-                        familyAddress.CreatedByPersonAliasId = ImportPersonAlias.Id;
-                        familyAddress.Name = familyGroup.Name;
-                        familyAddress.IsActive = true;
+                        if ( familyAddress != null )
+                        {
+                            familyAddress.CreatedByPersonAliasId = ImportPersonAlias.Id;
+                            familyAddress.Name = familyGroup.Name;
+                            familyAddress.IsActive = true;
 
-                        groupLocation.GroupId = familyGroup.Id;
-                        groupLocation.LocationId = familyAddress.Id;
-                        groupLocation.IsMailingLocation = true;
-                        groupLocation.IsMappedLocation = true;
+                            groupLocation.GroupId = familyGroup.Id;
+                            groupLocation.LocationId = familyAddress.Id;
+                            groupLocation.IsMailingLocation = true;
+                            groupLocation.IsMappedLocation = true;
 
-                        string addressType = row["Address_Type"] as string;
+                            string addressType = row["Address_Type"] as string;
 
-                        if (addressType.Equals("Primary"))
-                        {
-                            groupLocation.GroupLocationTypeValueId = homeGroupLocationTypeId;
-                        }
-                        else if (addressType.Equals("Business") || addressType.Equals("Org"))
-                        {
-                            groupLocation.GroupLocationTypeValueId = workGroupLocationTypeId;
-                        }
-                        else if (addressType.Equals("Previous"))
-                        {
-                            groupLocation.GroupLocationTypeValueId = previousGroupLocationTypeId;
-                        }
-                        else if (!string.IsNullOrEmpty(addressType))
-                        {
-                            groupLocation.GroupLocationTypeValueId = groupLocationTypeList.Where(dv => dv.Value.Equals(addressType))
-                                .Select(dv => (int?)dv.Id).FirstOrDefault();
-                        }
-
-                        newGroupLocations.Add(groupLocation);
-                        completed++;
-
-                        if (completed % percentage < 1)
-                        {
-                            int percentComplete = completed / percentage;
-                            ReportProgress(percentComplete, string.Format("{0:N0} addresses imported ({1}% complete).", completed, percentComplete));
-                        }
-                        else if (completed % ReportingNumber < 1)
-                        {
-                            var rockContext = new RockContext();
-                            rockContext.WrapTransaction(() =>
+                            if ( addressType.Equals( "Primary" ) )
                             {
-                                rockContext.Configuration.AutoDetectChangesEnabled = false;
-                                rockContext.GroupLocations.AddRange(newGroupLocations);
-                                rockContext.ChangeTracker.DetectChanges();
-                                rockContext.SaveChanges(DisableAudit);
-                            });
+                                groupLocation.GroupLocationTypeValueId = homeGroupLocationTypeId;
+                            }
+                            else if ( addressType.Equals( "Business" ) || addressType.Equals( "Org" ) )
+                            {
+                                groupLocation.GroupLocationTypeValueId = workGroupLocationTypeId;
+                            }
+                            else if ( addressType.Equals( "Previous" ) )
+                            {
+                                groupLocation.GroupLocationTypeValueId = previousGroupLocationTypeId;
+                            }
+                            else if ( !string.IsNullOrEmpty( addressType ) )
+                            {
+                                groupLocation.GroupLocationTypeValueId = groupLocationTypeList.Where( dv => dv.Value.Equals( addressType ) )
+                                    .Select( dv => (int?)dv.Id ).FirstOrDefault();
+                            }
 
-                            newGroupLocations.Clear();
-                            lookupContext = new RockContext();
-                            lookupService = new LocationService(lookupContext);
-                            ReportPartialProgress();
+                            newGroupLocations.Add( groupLocation );
+                            completed++;
+
+                            if ( completed % percentage < 1 )
+                            {
+                                int percentComplete = completed / percentage;
+                                ReportProgress( percentComplete, string.Format( "{0:N0} addresses imported ({1}% complete).", completed, percentComplete ) );
+                            }
+                            else if ( completed % ReportingNumber < 1 )
+                            {
+                                var rockContext = new RockContext();
+                                rockContext.WrapTransaction( () =>
+                                {
+                                    rockContext.Configuration.AutoDetectChangesEnabled = false;
+                                    rockContext.GroupLocations.AddRange( newGroupLocations );
+                                    rockContext.ChangeTracker.DetectChanges();
+                                    rockContext.SaveChanges( DisableAudit );
+                                } );
+
+                                newGroupLocations.Clear();
+                                lookupContext = new RockContext();
+                                lookupService = new LocationService( lookupContext );
+                                ReportPartialProgress();
+                            }
                         }
                     }
                 }
