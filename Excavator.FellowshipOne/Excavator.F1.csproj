@@ -67,6 +67,7 @@
     <Compile Include="F1Component.cs" />
     <Compile Include="Maps\Attendance.cs" />
     <Compile Include="Maps\Attributes.cs" />
+    <Compile Include="Maps\Groups.cs" />
     <Compile Include="Maps\Notes.cs" />
     <Compile Include="Maps\Communication.cs" />
     <Compile Include="Maps\Financial.cs" />

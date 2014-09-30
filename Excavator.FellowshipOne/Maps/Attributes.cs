@@ -180,6 +180,12 @@ namespace Excavator.F1
                     case 5:
                         guid = "580909EC-0EE4-4141-942A-7400C53509EF";
                         break;
+                    case 8:
+                    case 9:
+                    case 10:
+                    case 11:
+                        guid = "DD6E1BFC-7458-4804-805D-16D5144AACE8";
+                        break;
                     default:
                         break;
                 }
@@ -260,6 +266,7 @@ namespace Excavator.F1
             // var extraCommentAttribute = new List<AttributeValue>();
 
             int completed = 0;
+            bool saveAttributeList = false;
             int totalRows = tableData.Count();
             int percentage = (totalRows - 1) / 100 + 1;
             ReportProgress(0, string.Format("Verifying attribute import ({0:N0} found).", totalRows));
@@ -1802,12 +1809,14 @@ namespace Excavator.F1
                             attributeValues.AttributeId = 966;
                             attributeValues.EntityId = (int)personId;
                             attributeValues.Value = "F80B2BEA-5FA5-48C4-82FF-AC5E1A15C763";
+                            saveAttributeList = true; //unfortunately it will save and clear after each record, however, it keeps "Connect Group Leaders" in the same list for referencing and editing (for 2000 objects in list).
                         }
                     }
 
                     //Just for leaders and hosts
                     if (f1AttributeGroupName == "Connect Group Leaders")
                     {
+                        saveAttributeList = false;
                         if (f1AttributeName == "Host")
                         {
 
@@ -1822,14 +1831,22 @@ namespace Excavator.F1
                                     {
                                         switch (startDate.Month)
                                         {
+                                            case 6:
+                                            case 7:
+                                                newAttributes.Find( a => a.AttributeId == 1022 && a.EntityId == personId ).Value += "DD20341B-411D-4A04-BFC3-9C20485DBEA3" + ",";
+                                                break;
                                             case 08:
                                             case 09:
                                             case 10:
                                             case 11:
                                             case 12:
-                                                if (newAttributes.Find(a => a.Value.StartsWith("BA998BEC-4371-4279-8F70-DA00A2AE0F64,")) == null)
+                                                //if (newAttributes.Find(a => a.Value.StartsWith("BA998BEC-4371-4279-8F70-DA00A2AE0F64,")) == null)
+                                                //{
+                                                //    newAttributes.Find(a => a.AttributeId == 1022 && a.EntityId == personId).Value += "BA998BEC-4371-4279-8F70-DA00A2AE0F64" + ",";
+                                                //}
+                                                if ( newAttributes.Find( a => a.AttributeId == 1022 && a.EntityId == personId ) != null )
                                                 {
-                                                    newAttributes.Find(a => a.AttributeId == 1022 && a.EntityId == personId).Value += "BA998BEC-4371-4279-8F70-DA00A2AE0F64" + ",";
+                                                    newAttributes.Find( a => a.AttributeId == 1022 && a.EntityId == personId ).Value += "BA998BEC-4371-4279-8F70-DA00A2AE0F64" + ",";
                                                 }
                                                 break;
                                             default:
@@ -1843,34 +1860,43 @@ namespace Excavator.F1
                                             //Winter session, January - beginning of March. Since Spring CG starts in the mid of March, March will be used for Spring
                                             case 1:
                                             case 2:
-                                                if (newAttributes.Find(a => a.Value.StartsWith("BA998BEC-4371-4279-8F70-DA00A2AE0F64,7AAD4061-B9B1-4FCA-BE88-3EEABC9E467E,")) == null)
+                                                //if (newAttributes.Find(a => a.Value.StartsWith("BA998BEC-4371-4279-8F70-DA00A2AE0F64,")) == null)
+                                                //{
+                                                //    newAttributes.Find(a => a.AttributeId == 1022 && a.EntityId == personId).Value += "7AAD4061-B9B1-4FCA-BE88-3EEABC9E467E" + ",";
+                                                //}
+                                                //else if (newAttributes.Find(a => a.Value.StartsWith("7AAD4061-B9B1-4FCA-BE88-3EEABC9E467E,")) == null)
+                                                //{
+                                                //    newAttributes.Find(a => a.AttributeId == 1022 && a.EntityId == personId).Value += "7AAD4061-B9B1-4FCA-BE88-3EEABC9E467E" + ",";
+                                                //}
+                                                if ( newAttributes.Find( a => a.AttributeId == 1022 && a.EntityId == personId ) != null )
                                                 {
-                                                    newAttributes.Find(a => a.AttributeId == 1022 && a.EntityId == personId).Value += "7AAD4061-B9B1-4FCA-BE88-3EEABC9E467E" + ",";
+                                                    newAttributes.Find( a => a.AttributeId == 1022 && a.EntityId == personId ).Value += "7AAD4061-B9B1-4FCA-BE88-3EEABC9E467E" + ",";
                                                 }
-                                                else if (newAttributes.Find(a => a.Value.StartsWith("7AAD4061-B9B1-4FCA-BE88-3EEABC9E467E,")) == null)
-                                                {
-                                                    newAttributes.Find(a => a.AttributeId == 1022 && a.EntityId == personId).Value += "7AAD4061-B9B1-4FCA-BE88-3EEABC9E467E" + ",";
-                                                }
-                                                break;
+
+                                                    break;
                                             case 3:
                                             case 4:
                                             case 5:
-                                                if (newAttributes.Find(a => a.Value.StartsWith("BA998BEC-4371-4279-8F70-DA00A2AE0F64,7AAD4061-B9B1-4FCA-BE88-3EEABC9E467E,580909EC-0EE4-4141-942A-7400C53509EF,")) == null)
-                                                {
-                                                    newAttributes.Find(a => a.AttributeId == 1022 && a.EntityId == personId).Value += "580909EC-0EE4-4141-942A-7400C53509EF" + ",";
-                                                }
-                                                else if (newAttributes.Find(a => a.Value.StartsWith("BA998BEC-4371-4279-8F70-DA00A2AE0F64,580909EC-0EE4-4141-942A-7400C53509EF,")) == null)
-                                                {
-                                                    newAttributes.Find(a => a.AttributeId == 1022 && a.EntityId == personId).Value += "580909EC-0EE4-4141-942A-7400C53509EF" + ",";
-                                                }
-                                                else if (newAttributes.Find(a => a.Value.StartsWith("7AAD4061-B9B1-4FCA-BE88-3EEABC9E467E,580909EC-0EE4-4141-942A-7400C53509EF,")) == null)
-                                                {
-                                                    newAttributes.Find(a => a.AttributeId == 1022 && a.EntityId == personId).Value += "580909EC-0EE4-4141-942A-7400C53509EF" + ",";
-                                                }
-                                                else if (newAttributes.Find(a => a.Value.StartsWith("580909EC-0EE4-4141-942A-7400C53509EF,")) == null)
-                                                {
-                                                    newAttributes.Find(a => a.AttributeId == 1022 && a.EntityId == personId).Value += "580909EC-0EE4-4141-942A-7400C53509EF" + ",";
-                                                }
+                                                //if (newAttributes.Find(a => a.Value.StartsWith("BA998BEC-4371-4279-8F70-DA00A2AE0F64,7AAD4061-B9B1-4FCA-BE88-3EEABC9E467E,580909EC-0EE4-4141-942A-7400C53509EF,")) == null)
+                                                //{
+                                                //    newAttributes.Find(a => a.AttributeId == 1022 && a.EntityId == personId).Value += "580909EC-0EE4-4141-942A-7400C53509EF" + ",";
+                                                //}
+                                                //else if (newAttributes.Find(a => a.Value.StartsWith("BA998BEC-4371-4279-8F70-DA00A2AE0F64,580909EC-0EE4-4141-942A-7400C53509EF,")) == null)
+                                                //{
+                                                //    newAttributes.Find(a => a.AttributeId == 1022 && a.EntityId == personId).Value += "580909EC-0EE4-4141-942A-7400C53509EF" + ",";
+                                                //}
+                                                //else if (newAttributes.Find(a => a.Value.StartsWith("7AAD4061-B9B1-4FCA-BE88-3EEABC9E467E,580909EC-0EE4-4141-942A-7400C53509EF,")) == null)
+                                                //{
+                                                //    newAttributes.Find(a => a.AttributeId == 1022 && a.EntityId == personId).Value += "580909EC-0EE4-4141-942A-7400C53509EF" + ",";
+                                                //}
+                                                //else if (newAttributes.Find(a => a.Value.StartsWith("580909EC-0EE4-4141-942A-7400C53509EF,")) == null)
+                                                //{
+                                                //    newAttributes.Find(a => a.AttributeId == 1022 && a.EntityId == personId).Value += "580909EC-0EE4-4141-942A-7400C53509EF" + ",";
+                                                //}
+                                                    if ( newAttributes.Find( a => a.AttributeId == 1022 && a.EntityId == personId ) != null )
+                                                    {
+                                                        newAttributes.Find( a => a.AttributeId == 1022 && a.EntityId == personId ).Value += "580909EC-0EE4-4141-942A-7400C53509EF" + ",";
+                                                    }
                                                 break;
                                             default:
                                                 break;
@@ -1879,9 +1905,9 @@ namespace Excavator.F1
                                 }
                                 if (newAttributes.Find(a => a.AttributeId == 1023 && a.EntityId == personId) != null)  //f1comment value
                                 {
-                                    if (f1Comment != null)
+                                    if (!String.IsNullOrWhiteSpace(f1Comment))
                                     {
-                                        if (newAttributes.Find(a => a.Value.StartsWith(f1Comment)) == null)
+                                        if ( newAttributes.Find( a => a.AttributeId == 1023 && a.EntityId == personId ).Value != f1Comment )
                                         {
                                             newAttributes.Find(a => a.AttributeId == 1023 && a.EntityId == personId).Value += ", " + f1Comment;
                                         }
@@ -1894,9 +1920,12 @@ namespace Excavator.F1
                             else
                             {
                                 //host comments
+                                if ( !String.IsNullOrWhiteSpace( f1Comment ) )
+                                {
                                 attributeValues.AttributeId = 1023;
                                 attributeValues.EntityId = (int)personId;
-                                attributeValues.Value = f1Comment;
+                                 attributeValues.Value = f1Comment; 
+                                }
 
                                 //host seasons
                                 attributeExtraDate.AttributeId = 1022;
@@ -1907,6 +1936,10 @@ namespace Excavator.F1
                                 {
                                     switch (startDate.Month)
                                     {
+                                        case 6:
+                                        case 7:
+                                            attributeExtraDate.Value = "DD20341B-411D-4A04-BFC3-9C20485DBEA3" + ",";
+                                            break;
                                         case 08:
                                         case 09:
                                         case 10:
@@ -1946,76 +1979,87 @@ namespace Excavator.F1
                             {
                                 if (newAttributes.Find(a => a.AttributeId == 1028 && a.EntityId == personId) != null)  //multi-select year value
                                 {
+                                    if ( f1StartDate != null )
+                                    {
+                                        DateTime startDate = (DateTime)f1StartDate;
+                                        if ( startDate.Year == 2013 )
+                                        {
+                                            switch ( startDate.Month )
+                                            {
+                                                case 6:
+                                                case 7:
+                                                    newAttributes.Find( a => a.AttributeId == 1028 && a.EntityId == personId ).Value += "DD20341B-411D-4A04-BFC3-9C20485DBEA3" + ",";
+                                                    break;
+                                                case 08:
+                                                case 09:
+                                                case 10:
+                                                case 11:
+                                                case 12:
+                                                    //if (newAttributes.Find(a => a.Value.StartsWith("BA998BEC-4371-4279-8F70-DA00A2AE0F64,")) == null)
+                                                    //{
+                                                    //    newAttributes.Find(a => a.AttributeId == 1028 && a.EntityId == personId).Value += "BA998BEC-4371-4279-8F70-DA00A2AE0F64" + ",";
+                                                    //}
 
-                                    DateTime startDate = (DateTime)f1StartDate;
-                                    if (startDate.Year == 2013)
-                                    {
-                                        switch (startDate.Month)
-                                        {
-                                            case 08:
-                                            case 09:
-                                            case 10:
-                                            case 11:
-                                            case 12:
-                                                if (newAttributes.Find(a => a.Value.StartsWith("BA998BEC-4371-4279-8F70-DA00A2AE0F64,")) == null)
-                                                {
-                                                    newAttributes.Find(a => a.AttributeId == 1028 && a.EntityId == personId).Value += "BA998BEC-4371-4279-8F70-DA00A2AE0F64" + ",";
-                                                }
-                                                break;
-                                            default:
-                                                break;
+                                                    newAttributes.Find( a => a.AttributeId == 1028 && a.EntityId == personId ).Value += "BA998BEC-4371-4279-8F70-DA00A2AE0F64" + ",";
+                                                    break;
+                                                default:
+                                                    break;
+                                            }
                                         }
-                                    }
-                                    else if (startDate.Year == 2014)
-                                    {
-                                        switch (startDate.Month)
+                                        else if ( startDate.Year == 2014 )
                                         {
-                                            //Winter session, January - beginning of March. Since Spring CG starts in the mid of March, March will be used for Spring
-                                            case 1:
-                                            case 2:
-                                                if (newAttributes.Find(a => a.Value.StartsWith("BA998BEC-4371-4279-8F70-DA00A2AE0F64,7AAD4061-B9B1-4FCA-BE88-3EEABC9E467E,")) == null)
-                                                {
-                                                    newAttributes.Find(a => a.AttributeId == 1028 && a.EntityId == personId).Value += "7AAD4061-B9B1-4FCA-BE88-3EEABC9E467E" + ",";
-                                                }
-                                                else if (newAttributes.Find(a => a.Value.StartsWith("7AAD4061-B9B1-4FCA-BE88-3EEABC9E467E,")) == null)
-                                                {
-                                                    newAttributes.Find(a => a.AttributeId == 1028 && a.EntityId == personId).Value += "7AAD4061-B9B1-4FCA-BE88-3EEABC9E467E" + ",";
-                                                }
-                                                break;
-                                            case 3:
-                                            case 4:
-                                            case 5:
-                                                if (newAttributes.Find(a => a.Value.StartsWith("BA998BEC-4371-4279-8F70-DA00A2AE0F64,7AAD4061-B9B1-4FCA-BE88-3EEABC9E467E,580909EC-0EE4-4141-942A-7400C53509EF,")) == null)
-                                                {
-                                                    newAttributes.Find(a => a.AttributeId == 1028 && a.EntityId == personId).Value += "580909EC-0EE4-4141-942A-7400C53509EF" + ",";
-                                                }
-                                                else if (newAttributes.Find(a => a.Value.StartsWith("BA998BEC-4371-4279-8F70-DA00A2AE0F64,580909EC-0EE4-4141-942A-7400C53509EF,")) == null)
-                                                {
-                                                    newAttributes.Find(a => a.AttributeId == 1028 && a.EntityId == personId).Value += "580909EC-0EE4-4141-942A-7400C53509EF" + ",";
-                                                }
-                                                else if (newAttributes.Find(a => a.Value.StartsWith("7AAD4061-B9B1-4FCA-BE88-3EEABC9E467E,580909EC-0EE4-4141-942A-7400C53509EF,")) == null)
-                                                {
-                                                    newAttributes.Find(a => a.AttributeId == 1028 && a.EntityId == personId).Value += "580909EC-0EE4-4141-942A-7400C53509EF" + ",";
-                                                }
-                                                else if (newAttributes.Find(a => a.Value.StartsWith("580909EC-0EE4-4141-942A-7400C53509EF,")) == null)
-                                                {
-                                                    newAttributes.Find(a => a.AttributeId == 1028 && a.EntityId == personId).Value += "580909EC-0EE4-4141-942A-7400C53509EF" + ",";
-                                                }
-                                                break;
-                                            case 8:
-                                            case 9:
-                                            case 10:
-                                            case 11:
-                                                newAttributes.Find(a => a.AttributeId == 1028 && a.EntityId == personId).Value += "DD6E1BFC-7458-4804-805D-16D5144AACE8" + ",";
-                                                break;
-                                            default:
-                                                break;
+                                            switch ( startDate.Month )
+                                            {
+                                                //Winter session, January - beginning of March. Since Spring CG starts in the mid of March, March will be used for Spring
+                                                case 1:
+                                                case 2:
+                                                    //if (newAttributes.Find(a => a.Value.StartsWith("BA998BEC-4371-4279-8F70-DA00A2AE0F64,7AAD4061-B9B1-4FCA-BE88-3EEABC9E467E,")) == null)
+                                                    //{
+                                                    //    newAttributes.Find(a => a.AttributeId == 1028 && a.EntityId == personId).Value += "7AAD4061-B9B1-4FCA-BE88-3EEABC9E467E" + ",";
+                                                    //}
+                                                    //else if (newAttributes.Find(a => a.Value.StartsWith("7AAD4061-B9B1-4FCA-BE88-3EEABC9E467E,")) == null)
+                                                    //{
+                                                    //    newAttributes.Find(a => a.AttributeId == 1028 && a.EntityId == personId).Value += "7AAD4061-B9B1-4FCA-BE88-3EEABC9E467E" + ",";
+                                                    //}
+                                                    newAttributes.Find( a => a.AttributeId == 1028 && a.EntityId == personId ).Value += "7AAD4061-B9B1-4FCA-BE88-3EEABC9E467E" + ",";
+                                                    break;
+                                                case 3:
+                                                case 4:
+                                                case 5:
+                                                    //if (newAttributes.Find(a => a.Value.StartsWith("BA998BEC-4371-4279-8F70-DA00A2AE0F64,7AAD4061-B9B1-4FCA-BE88-3EEABC9E467E,580909EC-0EE4-4141-942A-7400C53509EF,")) == null)
+                                                    //{
+                                                    //    newAttributes.Find(a => a.AttributeId == 1028 && a.EntityId == personId).Value += "580909EC-0EE4-4141-942A-7400C53509EF" + ",";
+                                                    //}
+                                                    //else if (newAttributes.Find(a => a.Value.StartsWith("BA998BEC-4371-4279-8F70-DA00A2AE0F64,580909EC-0EE4-4141-942A-7400C53509EF,")) == null)
+                                                    //{
+                                                    //    newAttributes.Find(a => a.AttributeId == 1028 && a.EntityId == personId).Value += "580909EC-0EE4-4141-942A-7400C53509EF" + ",";
+                                                    //}
+                                                    //else if (newAttributes.Find(a => a.Value.StartsWith("7AAD4061-B9B1-4FCA-BE88-3EEABC9E467E,580909EC-0EE4-4141-942A-7400C53509EF,")) == null)
+                                                    //{
+                                                    //    newAttributes.Find(a => a.AttributeId == 1028 && a.EntityId == personId).Value += "580909EC-0EE4-4141-942A-7400C53509EF" + ",";
+                                                    //}
+                                                    //else if (newAttributes.Find(a => a.Value.StartsWith("580909EC-0EE4-4141-942A-7400C53509EF,")) == null)
+                                                    //{
+                                                    //    newAttributes.Find(a => a.AttributeId == 1028 && a.EntityId == personId).Value += "580909EC-0EE4-4141-942A-7400C53509EF" + ",";
+                                                    //}
+
+                                                    newAttributes.Find( a => a.AttributeId == 1028 && a.EntityId == personId ).Value += "580909EC-0EE4-4141-942A-7400C53509EF" + ",";
+                                                    break;
+                                                case 8:
+                                                case 9:
+                                                case 10:
+                                                case 11:
+                                                    newAttributes.Find( a => a.AttributeId == 1028 && a.EntityId == personId ).Value += "DD6E1BFC-7458-4804-805D-16D5144AACE8" + ",";
+                                                    break;
+                                                default:
+                                                    break;
+                                            }
                                         }
                                     }
                                 }
                                 if (newAttributes.Find(a => a.AttributeId == 1029 && a.EntityId == personId) != null)  //f1comment value
                                 {
-                                    if (f1Comment != null)
+                                    if (!string.IsNullOrWhiteSpace(f1Comment))
                                     {
                                         if (newAttributes.Find(a => a.Value.StartsWith(f1Comment)) == null)
                                         {
@@ -2029,12 +2073,15 @@ namespace Excavator.F1
                             //if current person does not have these attributes
                             else
                             {
-                                //host comments
-                                attributeValues.AttributeId = 1029;
-                                attributeValues.EntityId = (int)personId;
-                                attributeValues.Value = f1Comment;
+                                //leader comments
+                                if ( !String.IsNullOrWhiteSpace( f1Comment ) )
+                                {
+                                    attributeValues.AttributeId = 1029;
+                                    attributeValues.EntityId = (int)personId;
+                                    attributeValues.Value = f1Comment;
+                                }
 
-                                //host seasons
+                                //leader seasons
                                 attributeExtraDate.AttributeId = 1028;
                                 attributeExtraDate.EntityId = (int)personId;
 
@@ -2043,6 +2090,10 @@ namespace Excavator.F1
                                 {
                                     switch (startDate.Month)
                                     {
+                                        case 6:
+                                        case 7:
+                                            attributeExtraDate.Value = "DD20341B-411D-4A04-BFC3-9C20485DBEA3" + ",";
+                                            break;
                                         case 08:
                                         case 09:
                                         case 10:
@@ -2133,10 +2184,12 @@ namespace Excavator.F1
                             //    attributeValues.EntityId = (int)personId;
                             //    attributeValues.Value = DateRange(f1StartDate, f1EndDate);
                             //}
+                            saveAttributeList = true;
                         }
                     }
                     else if (f1AttributeGroupName == "Discovering Crossroads")
                     {
+                        saveAttributeList = false;
                         if (f1AttributeName == "Completed Embrace")
                         {
                             //Checks if current person already has this Rock Attribute and will append the current F1 attribute value to the Rock one.
@@ -2466,10 +2519,12 @@ namespace Excavator.F1
                                 attributeValues.AttributeId = 1020;
                                 attributeValues.EntityId = (int)personId;
                                 attributeValues.Value = DateRange(f1StartDate, f1EndDate) + ",";
+                                saveAttributeList = true;
                             }
                         }
                         else if (f1AttributeName == "CPR Certified")
                         {
+                            saveAttributeList = false;
                             //Checks if current person already has this Rock Attribute and will append the current F1 attribute value to the Rock one.
                             if (newAttributes.Find(a => (a.AttributeId == 1040 && a.EntityId == personId)) != null)
                             {
@@ -2574,9 +2629,11 @@ namespace Excavator.F1
                                 attributeValues.Value = DateRange(f1StartDate, f1EndDate);
 
                             }
+                            saveAttributeList = true;
                         }
                         else if (f1AttributeName == "Prayer")
                         {
+                            saveAttributeList = false;
                             if (f1Comment != null)
                             {
                                 //Checks if current person already has this Rock Attribute and will append the current F1 attribute value to the Rock one.
@@ -2648,10 +2705,12 @@ namespace Excavator.F1
                         attributeValues.AttributeId = 1084;
                         attributeValues.EntityId = (int)personId;
                         attributeValues.Value = "2C8B55AF-B5E2-41F9-9E08-C2E6F4624550";
+                        saveAttributeList = true;
                     }
                     //  Will have to manually add these because if they do mulitple tournaments, Excavator will overwrite the value instead of appending a new one.
                     if (f1AttributeGroupName == "Golf Tournament")
                     {
+                        saveAttributeList = false;
                         if (f1AttributeName == "2007 Spring Classic")
                         {
                             //Checks if current person already has this Rock Attribute and will append the current F1 attribute value to the Rock one.
@@ -3583,9 +3642,11 @@ namespace Excavator.F1
                                 }
                             }
                         }
+                        saveAttributeList = true;
                     }
                     else if (f1AttributeGroupName == "Military Service")
                     {
+                        saveAttributeList = false;
                         if (f1Comment != null)
                         {
                             attributeExtraComment.AttributeId = 1134;
@@ -6263,7 +6324,7 @@ namespace Excavator.F1
                     }
 
                     completed++;
-                    if (completed == 1006)
+                    if (completed == 2000 || saveAttributeList) //Using saveAttributeList for saving and clearing the list. Used for CG Host and Leaders
                     {
                         int percentComplete = completed / percentage;
                         ReportProgress(percentComplete, string.Format("{0:N0} attributes imported ({1}% complete).", completed, percentComplete));

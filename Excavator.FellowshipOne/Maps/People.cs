@@ -1,4 +1,4 @@
-﻿// <copyright>
+﻿// <copyright> new
 // Copyright 2013 by the Spark Development Network
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -202,6 +202,8 @@ namespace Excavator.F1
 
             var schoolList = new List<DefinedValue>();
             var newSchool = new DefinedValue();
+            var existingSchoolLookUp = dvService.Queryable()
+                .Where( dv => dv.DefinedTypeId == 34 ).ToList();
 
             // Marital statuses: Married, Single, Separated, etc
             List<DefinedValue> maritalStatusTypes = dvService.Queryable()
@@ -493,9 +495,55 @@ namespace Excavator.F1
                             person.AttributeValues[schoolAttribute.Key].Add( new AttributeValue()
                             {
                                 AttributeId = schoolAttribute.Id,
-                                Value = school,
+                                Value = checkSchool(school),
                                 Order = 0
                             } );
+
+                            //var schoolNameInList = new DefinedValue();
+                            //if ( existingSchoolLookUp.FirstOrDefault( s => s.Value == school ) != null )
+                            //{
+                            //    schoolNameInList = existingSchoolLookUp.FirstOrDefault( s => s.Value == school );
+                            //}
+
+                            //if ( ( !string.IsNullOrEmpty( schoolNameInList.Value ) ) || ( school == "Tarrant County Community" ) || ( school == "Pearcy" ) || ( school == "1" ) || ( school == "2" ) )
+                            //{
+                            //    if ( ( school == "Tarrant County Community" ) )
+                            //    {
+                            //        ReportProgress( 0, string.Format( "Existing School 2: {0}", existingSchoolLookUp.FirstOrDefault( s => s.Value == school ).Value /*schoolNameInList.Name*/) );
+                            //        person.Attributes.Add( schoolAttribute.Key, schoolAttribute );
+                            //        person.AttributeValues.Add( schoolAttribute.Key, new List<AttributeValue>() );
+                            //        person.AttributeValues[schoolAttribute.Key].Add( new AttributeValue()
+                            //        {
+                            //            AttributeId = schoolAttribute.Id,
+                            //            Value = "069D63BA-0CBF-4AC3-AB7E-243CE83B7268",                                  //string.Format("{0}", existingSchoolLookUp.FirstOrDefault(s => s.Name == school).Guid /*schoolNameInList.Guid*/),
+                            //            Order = 0
+                            //        } );
+                            //    }
+                            //    else if ( ( school == "Pearcy" ) )
+                            //    {
+                            //        ReportProgress( 0, string.Format( "Existing School 2: {0}", existingSchoolLookUp.FirstOrDefault( s => s.Value == school ).Value /*schoolNameInList.Name*/) );
+                            //        person.Attributes.Add( schoolAttribute.Key, schoolAttribute );
+                            //        person.AttributeValues.Add( schoolAttribute.Key, new List<AttributeValue>() );
+                            //        person.AttributeValues[schoolAttribute.Key].Add( new AttributeValue()
+                            //        {
+                            //            AttributeId = schoolAttribute.Id,
+                            //            Value = "88828194-3BFB-4F30-9D29-4719FEA6A9F6",                                  //string.Format("{0}", existingSchoolLookUp.FirstOrDefault(s => s.Name == school).Guid /*schoolNameInList.Guid*/),
+                            //            Order = 0
+                            //        } );
+                            //    }
+                            //    else
+                            //    {
+                            //        ReportProgress( 0, string.Format( "Existing School: {0}", existingSchoolLookUp.FirstOrDefault( s => s.Value == school ).Value /*schoolNameInList.Name*/) );
+                            //        person.Attributes.Add( schoolAttribute.Key, schoolAttribute );
+                            //        person.AttributeValues.Add( schoolAttribute.Key, new List<AttributeValue>() );
+                            //        person.AttributeValues[schoolAttribute.Key].Add( new AttributeValue()
+                            //        {
+                            //            AttributeId = schoolAttribute.Id,
+                            //            Value = string.Format( "{0}", existingSchoolLookUp.FirstOrDefault( s => s.Value == school ).Guid /*schoolNameInList.Guid*/),
+                            //            Order = 0
+                            //        } );
+                            //    }
+                            //}
                         }
 
                         DateTime? membershipDate = row["Status_Date"] as DateTime?;
@@ -812,6 +860,75 @@ namespace Excavator.F1
             }
 
             ReportProgress( 100, string.Format( "Finished person import: {0:N0} people imported.", completed ) );
+        }
+
+        /// <summary>
+        /// Check DB if school already listed in Defined Value
+        /// </summary>
+        /// <param name="school">The School Name</param>
+        /// <returns>School ID as string</returns>
+
+        private string checkSchool( string school )
+        {
+            var lookupContext = new RockContext();
+            var dvService = new DefinedValueService( lookupContext );
+
+            var dtService = new DefinedTypeService( lookupContext );
+            int schoolDefinedTypeId = dtService.Queryable().Where( dt => dt.Name == "School" ).FirstOrDefault().Id;
+
+            var schoolList = new List<DefinedValue>();
+            var checkedSchool = new DefinedValue();
+            //var schoolAttribute = AttributeCache.Read( personAttributes.FirstOrDefault( a => a.Key == "School" ) );
+
+
+            //Checks if school is in DB
+            //Gets Defined Type and seaches Defined Values for the schoolDefinedTypeId
+            schoolList = dvService.Queryable()
+                .Where( dv => dv.DefinedTypeId == schoolDefinedTypeId ).ToList(); //Defined Type should equal 34 (CCC)
+            //Gets school info if it is present in DB
+            checkedSchool = schoolList.Where(s => s.Value == school.Trim()).FirstOrDefault();
+
+            int count = 0;
+            //If it isn't in the DB it will add it.
+            while ( checkedSchool == null )
+            {
+                var newSchool = new DefinedValue();
+                var newSchoolList = new List<DefinedValue>();
+
+                newSchool.IsSystem = false;
+                newSchool.DefinedTypeId = 34;
+                newSchool.Order = 0;
+                newSchool.Value = school.Trim();
+                newSchool.Guid = new Guid();
+
+                newSchoolList.Add( newSchool );
+
+                var rockContext = new RockContext();
+                rockContext.WrapTransaction( () =>
+                {
+                    rockContext.Configuration.AutoDetectChangesEnabled = false;
+                    rockContext.DefinedValues.AddRange( newSchoolList );
+                    rockContext.SaveChanges( DisableAudit );
+                } );
+
+                ReportProgress( 0, string.Format( "New School Added: {0}.", school.Trim() ) );
+
+                count++;
+
+                if ( count > 3 ) 
+                { 
+                    ReportProgress( 0, string.Format( "Stuck in Loop and school is not being added properly.", school.Trim() ) );
+                    return "173";
+                }
+
+            }
+
+            //If School is already in Defined Value Table, its Id is returned.
+            return Convert.ToString(checkedSchool.Id);
+
+
+
+            throw new NotImplementedException();
         }
 
         /// <summary>

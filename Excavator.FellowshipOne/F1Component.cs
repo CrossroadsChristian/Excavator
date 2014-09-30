@@ -61,7 +61,7 @@ namespace Excavator.F1
         /// <summary>
         /// The local database
         /// </summary>
-        public OrcaMDF.Core.Engine.Database Database;
+        public Database Database;
 
         /// <summary>
         /// The person assigned to do the import
@@ -115,7 +115,7 @@ namespace Excavator.F1
         /// <returns></returns>
         public override bool LoadSchema( string fileName )
         {
-            Database = new OrcaMDF.Core.Engine.Database(fileName);
+            Database = new Database( fileName );
             TableNodes = new List<DatabaseNode>();
             var scanner = new DataScanner( Database );
             var tables = Database.Dmvs.Tables;
@@ -156,8 +156,8 @@ namespace Excavator.F1
             var rockContext = new RockContext();
             var personService = new PersonService( rockContext );
             var importPerson = personService.GetByFullName( importUser, allowFirstNameOnly: true ).FirstOrDefault();
-            
-            if ( importPerson == null  )
+
+            if ( importPerson == null )
             {
                 importPerson = personService.Queryable().FirstOrDefault();
             }
@@ -176,8 +176,8 @@ namespace Excavator.F1
             tableDependencies.Add( "Users" );                // needed for notes, user logins
             tableDependencies.Add( "Company" );              // needed to attribute any business items
             tableDependencies.Add( "Individual_Household" ); // needed for just about everything
-            //tableDependencies.Add("ActivityMinistry");       // needed for RLC and Attendance
-            //tableDependencies.Add("RLC");                    // needed for Attendance
+            tableDependencies.Add("ActivityMinistry");       // needed for RLC and Attendance
+            tableDependencies.Add("RLC");                    // needed for Attendance
 
             if ( isValidImport )
             {
@@ -219,19 +219,22 @@ namespace Excavator.F1
                                 break;
 
                             case "Attribute":
-                                MapAttributes(scanner.ScanTable(table.Name).AsQueryable());
+                                MapAttributes( scanner.ScanTable( table.Name ).AsQueryable() );
+                                break;
+                            case "Groups":
+                                MapGroups( scanner.ScanTable( table.Name ).AsQueryable() );
                                 break;
 
-                            case "ActivityMinistry":
-                                MapActivityMinistry(scanner.ScanTable(table.Name).AsQueryable());
-                                break;
+                            //case "ActivityMinistry":
+                            //    MapActivityMinistry( scanner.ScanTable( table.Name ).AsQueryable() );
+                            //    break;
 
-                            case "RLC":
-                                MapRLC(scanner.ScanTable(table.Name).AsQueryable());
-                                break;
+                            //case "RLC":
+                            //    MapRLC( scanner.ScanTable( table.Name ).AsQueryable() );
+                            //    break;
 
                             case "Attendance":
-                                MapAttendance(scanner.ScanTable(table.Name).AsQueryable());
+                                MapAttendance( scanner.ScanTable( table.Name ).AsQueryable() );
                                 break;
 
                             default:
@@ -256,13 +259,13 @@ namespace Excavator.F1
                         {
                             MapUsers( scanner.ScanTable( table.Name ).AsQueryable() );
                         }
-                        else if (table.Name == "ActivityMinistry")
+                        else if ( table.Name == "ActivityMinistry" )
                         {
-                            MapActivityMinistry(scanner.ScanTable(table.Name).AsQueryable());
+                            MapActivityMinistry( scanner.ScanTable( table.Name ).AsQueryable() );
                         }
-                        else if (table.Name == "RLC")
+                        else if ( table.Name == "RLC" )
                         {
-                            MapRLC(scanner.ScanTable(table.Name).AsQueryable());
+                            MapRLC( scanner.ScanTable( table.Name ).AsQueryable() );
                         }
                     }
                 }

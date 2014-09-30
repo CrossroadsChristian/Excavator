@@ -387,7 +387,7 @@ namespace Excavator.F1
                         bool? rlcIsActive = row["Is_Active"] as bool?;
                         string roomName = row["Room_Name"] as string;
                         string maxCapacity = row["Max_Capacity"] as string;
-                        string roomDescription = row["Room_Desc"] as string;
+                        string roomDescription = row["Room_Name"] as string;
                         string roomCode = row["Room_Code"] as string;
                         DateTime? startAgeDate = row["Start_Age_Date"] as DateTime?;
                         DateTime? endAgeDate = row["End_Age_Date"] as DateTime?;
@@ -397,7 +397,11 @@ namespace Excavator.F1
                         string activityStringId = activityId.ToString();
                         GroupType parentActivityArea = existingGroupTypes.Where(gt => gt.ForeignId == activityStringId).FirstOrDefault();
 
-                        ReportProgress( 0, string.Format( "." ) );
+                        if ( String.IsNullOrWhiteSpace( rlcName ) )
+                        {
+                            ReportProgress( 0, string.Format( "." ) );
+                            rlcName = "Excavator Test";
+                        }
                         var rlcGroup = new Group();
                         bool rlcIsActiveBool = (bool)rlcIsActive;
 
