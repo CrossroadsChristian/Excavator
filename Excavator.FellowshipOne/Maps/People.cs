@@ -214,7 +214,7 @@ namespace Excavator.F1
             // Record status reasons: No Activity, Moved, Deceased, etc
             List<DefinedValue> recordStatusReasons = dvService.Queryable()
                 .Where( dv => dv.DefinedType.Guid == new Guid( Rock.SystemGuid.DefinedType.PERSON_RECORD_STATUS_REASON ) ).ToList();
-
+            
             // Record statuses: Active, Inactive, Pending
             int? recordStatusActiveId = dvService.Get( new Guid( Rock.SystemGuid.DefinedValue.PERSON_RECORD_STATUS_ACTIVE ) ).Id;
             int? recordStatusInactiveId = dvService.Get( new Guid( Rock.SystemGuid.DefinedValue.PERSON_RECORD_STATUS_INACTIVE ) ).Id;
@@ -338,10 +338,35 @@ namespace Excavator.F1
 
                         string memberStatus = row["Status_Name"] as string;
                         string subStatus = row["SubStatus_Name"] as string; //To match Member Status' we have in F1
+                        int attendeeId = connectionStatusTypes.FirstOrDefault( dv => dv.Guid == new Guid( "39F491C5-D6AC-4A9B-8AC0-C431CB17D588" ) ).Id;
                         if ( memberStatus == "Member" )
                         {
-                            person.ConnectionStatusValueId = connectionStatusTypes.FirstOrDefault( dv => dv.Guid == new Guid( Rock.SystemGuid.DefinedValue.PERSON_CONNECTION_STATUS_MEMBER ) ).Id;
-                            person.RecordStatusValueId = recordStatusActiveId;
+                            if ( subStatus == "Baptism" )
+                            {
+                                
+                                person.RecordStatusValueId = recordStatusActiveId;
+                                person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Member > Baptism" )
+                                    .Select( dv => dv.Id ).FirstOrDefault();
+                            }
+                            if ( subStatus == "Connected" )
+                            {
+                                
+                                person.RecordStatusValueId = recordStatusActiveId;
+                                person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Member > Connected" )
+                                    .Select( dv => dv.Id ).FirstOrDefault();
+                            }
+                            if ( subStatus == "Transfer" )
+                            {
+                                
+                                person.RecordStatusValueId = recordStatusActiveId;
+                                person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Member > Transfer" )
+                                    .Select( dv => dv.Id ).FirstOrDefault();
+                            }
+                            else
+                            {
+                                person.ConnectionStatusValueId = connectionStatusTypes.FirstOrDefault( dv => dv.Guid == new Guid( Rock.SystemGuid.DefinedValue.PERSON_CONNECTION_STATUS_MEMBER ) ).Id;
+                                person.RecordStatusValueId = recordStatusActiveId;
+                            }
                         }
                         else if ( memberStatus == "Visitor" )
                         {
@@ -360,14 +385,26 @@ namespace Excavator.F1
                             if (subStatus == "Member")
                             {
                                 person.RecordStatusValueId = recordStatusInactiveId;
-                                person.RecordStatusReasonValueId = recordStatusReasons.Where(dv => dv.Value == "Dropped Member")
+                                person.RecordStatusReasonValueId = recordStatusReasons.Where(dv => dv.Value == "Dropped > Member")
                                     .Select(dv => dv.Id).FirstOrDefault();
                             }
                             else if (subStatus == "Non-Member")
                             {
                                 person.RecordStatusValueId = recordStatusInactiveId;
-                                person.RecordStatusReasonValueId = recordStatusReasons.Where(dv => dv.Value == "Dropped Non-Member")
+                                person.RecordStatusReasonValueId = recordStatusReasons.Where(dv => dv.Value == "Dropped > Non-Member")
                                     .Select(dv => dv.Id).FirstOrDefault();
+                            }
+                            else if ( subStatus == "Beliefs" )
+                            {
+                                person.RecordStatusValueId = recordStatusInactiveId;
+                                person.RecordStatusReasonValueId = recordStatusReasons.Where( dv => dv.Value == "Dropped > Beliefs" )
+                                    .Select( dv => dv.Id ).FirstOrDefault();
+                            }
+                            else if ( subStatus == "Disagreement" )
+                            {
+                                person.RecordStatusValueId = recordStatusInactiveId;
+                                person.RecordStatusReasonValueId = recordStatusReasons.Where( dv => dv.Value == "Dropped > Disagreement" )
+                                    .Select( dv => dv.Id ).FirstOrDefault();
                             }
                             else
                             {
@@ -376,13 +413,171 @@ namespace Excavator.F1
                                     .Select(dv => dv.Id).FirstOrDefault();
                             }
                         }
+                        else if ( memberStatus == "Child of Member" )
+                        {
+
+                            person.RecordStatusValueId = recordStatusActiveId;
+                            person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Child of Member" )
+                                .Select( dv => dv.Id ).FirstOrDefault();
+                        }
+                        else if ( memberStatus == "Connected" )
+                        {
+
+                            person.RecordStatusValueId = recordStatusActiveId;
+                            person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Connected" )
+                                .Select( dv => dv.Id ).FirstOrDefault();
+                        }
+                        else if ( memberStatus == "1st Time" )
+                        {
+
+                            person.RecordStatusValueId = recordStatusActiveId;
+                            person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "1st Time" )
+                                .Select( dv => dv.Id ).FirstOrDefault();
+                        }
+                        else if ( memberStatus == "Angel Tree Recipient" )
+                        {
+
+                            person.RecordStatusValueId = recordStatusActiveId;
+                            person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Angel Tree Recipient" )
+                                .Select( dv => dv.Id ).FirstOrDefault();
+                        }
+                        else if ( memberStatus == "Attendee" )
+                        {
+                            if ( subStatus == "Baptism" )
+                            {
+                                person.RecordStatusValueId = recordStatusActiveId;
+                                person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Attendee > Baptism" )
+                                    .Select( dv => dv.Id ).FirstOrDefault();
+                            }
+                            else
+                            {
+                                person.ConnectionStatusValueId = attendeeId;
+                                person.RecordStatusValueId = recordStatusActiveId;
+                                //person.RecordStatusValueId = recordStatusActiveId;
+                                //person.RecordStatusReasonValueId = recordStatusReasons.Where( dv => dv.Value == "Attendee" )
+                                //    .Select( dv => dv.Id ).FirstOrDefault();
+                            }
+                        }
+                        else if ( memberStatus == "Camp Only" )
+                        {
+
+                            person.RecordStatusValueId = recordStatusActiveId;
+                            person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Camp Only" )
+                                .Select( dv => dv.Id ).FirstOrDefault();
+                        }
+                        else if ( memberStatus == "Camp Parent" )
+                        {
+
+                            person.RecordStatusValueId = recordStatusActiveId;
+                            person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Camp Parent" )
+                                .Select( dv => dv.Id ).FirstOrDefault();
+                        }
+                        else if ( memberStatus == "Contributor Only" )
+                        {
+
+                            person.RecordStatusValueId = recordStatusActiveId;
+                            person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Contributor Only" )
+                                .Select( dv => dv.Id ).FirstOrDefault();
+                        }
+                        else if ( memberStatus == "Divorce Care Only" )
+                        {
+
+                            person.RecordStatusValueId = recordStatusActiveId;
+                            person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Divorce Care Only" )
+                                .Select( dv => dv.Id ).FirstOrDefault();
+                        }
+                        else if ( memberStatus == "Easter Saturday 2014" )
+                        {
+
+                            person.RecordStatusValueId = recordStatusActiveId;
+                            person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Easter Saturday 2014" )
+                                .Select( dv => dv.Id ).FirstOrDefault();
+                        }
+                        else if ( memberStatus == "Evacuee" )
+                        {
+
+                            person.RecordStatusValueId = recordStatusActiveId;
+                            person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Evacuee" )
+                                .Select( dv => dv.Id ).FirstOrDefault();
+                        }
+                        else if ( memberStatus == "Event Only" )
+                        {
+
+                            person.RecordStatusValueId = recordStatusActiveId;
+                            person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Event Only" )
+                                .Select( dv => dv.Id ).FirstOrDefault();
+                        }
+                        else if ( memberStatus == "Event Prospect" )
+                        {
+
+                            person.RecordStatusValueId = recordStatusActiveId;
+                            person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Event Prospect" )
+                                .Select( dv => dv.Id ).FirstOrDefault();
+                        }
+                        else if ( memberStatus == "MDO Only" )
+                        {
+
+                            person.RecordStatusValueId = recordStatusActiveId;
+                            person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "MDO Only" )
+                                .Select( dv => dv.Id ).FirstOrDefault();
+                        }
+                        else if ( memberStatus == "Out of Town" )
+                        {
+                            if ( subStatus == "Away at College" )
+                            {
+                                person.RecordStatusValueId = recordStatusActiveId;
+                                person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Out of Town > Away at College" )
+                                    .Select( dv => dv.Id ).FirstOrDefault();
+                            }
+                            else
+                            {
+                                person.RecordStatusValueId = recordStatusActiveId;
+                                person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Out of Town" )
+                                    .Select( dv => dv.Id ).FirstOrDefault();
+                            }
+                        }
+                        else if ( memberStatus == "Preschool Playdate Only" )
+                        {
+
+                            person.RecordStatusValueId = recordStatusActiveId;
+                            person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Preschool Playdate Only" )
+                                .Select( dv => dv.Id ).FirstOrDefault();
+                        }
+                        else if ( memberStatus == "Sports Only" )
+                        {
+
+                            person.RecordStatusValueId = recordStatusActiveId;
+                            person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Sports Only" )
+                                .Select( dv => dv.Id ).FirstOrDefault();
+                        }
+                        else if ( memberStatus == "Supported Missionary" )
+                        {
+
+                            person.RecordStatusValueId = recordStatusActiveId;
+                            person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Supported Missionary" )
+                                .Select( dv => dv.Id ).FirstOrDefault();
+                        }
+                        else if ( memberStatus == "VBS Only" )
+                        {
+
+                            person.RecordStatusValueId = recordStatusActiveId;
+                            person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "VBS Only" )
+                                .Select( dv => dv.Id ).FirstOrDefault();
+                        }
+                        else if ( memberStatus == "Inactive Member" )
+                        {
+
+                            person.RecordStatusValueId = recordStatusInactiveId;
+                            person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "VBS Only" )
+                                .Select( dv => dv.Id ).FirstOrDefault();
+                        }
                         else
                         {
                             // F1 defaults are Member & Visitor; all others are user-defined
                             var customConnectionType = connectionStatusTypes.Where( dv => dv.Value == memberStatus )
                                 .Select( dv => (int?)dv.Id ).FirstOrDefault();
 
-                            int attendeeId = connectionStatusTypes.FirstOrDefault( dv => dv.Guid == new Guid( "39F491C5-D6AC-4A9B-8AC0-C431CB17D588" ) ).Id;
+                           
                             person.ConnectionStatusValueId = customConnectionType ?? attendeeId;
                             person.RecordStatusValueId = recordStatusActiveId;
                         }
@@ -399,20 +594,20 @@ namespace Excavator.F1
                             person.SystemNote = status_comment;
                             var noteList = new List<Note>(); //Seeing if these will add to the timeline.
                             var note = new Note();
-                            note.ForeignId = string.Format("{0}", individualId);
+                            note.ForeignId = string.Format( "{0}", individualId );
                             note.Text = status_comment;
                             note.NoteTypeId = 1;
-                            noteList.Add(note);
+                            noteList.Add( note );
 
-                            if (noteList.Any())
+                            if ( noteList.Any() )
                             {
                                 var rockContext = new RockContext();
-                                rockContext.WrapTransaction(() =>
+                                rockContext.WrapTransaction( () =>
                                 {
                                     rockContext.Configuration.AutoDetectChangesEnabled = false;
-                                    rockContext.Notes.AddRange(noteList);
-                                    rockContext.SaveChanges(DisableAudit);
-                                });
+                                    rockContext.Notes.AddRange( noteList );
+                                    rockContext.SaveChanges( DisableAudit );
+                                } );
                             }
                         }
 
@@ -478,58 +673,29 @@ namespace Excavator.F1
                         string school = row["School_Name"] as string;
                         if ( school != null )
                         {
-                            person.Attributes.Add( schoolAttribute.Key, schoolAttribute );
-                            person.AttributeValues.Add( schoolAttribute.Key, new AttributeValue()
+                       //     person.Attributes.Add( schoolAttribute.Key, schoolAttribute );
+                       //     person.AttributeValues.Add( schoolAttribute.Key, new AttributeValue()
+                       //     {
+                       //         AttributeId = schoolAttribute.Id,
+                       //         Value = checkSchool(school),
+                       //} );
+                            school = school.Trim();
+                            var schoolNameInList = new DefinedValue();
+                            if ( existingSchoolLookUp.FirstOrDefault( s => s.Value == school ) != null )
                             {
-                                AttributeId = schoolAttribute.Id,
-                                Value = checkSchool(school),
-                       } );
+                                schoolNameInList = existingSchoolLookUp.FirstOrDefault( s => s.Value == school );
+                            }
 
-                            //var schoolNameInList = new DefinedValue();
-                            //if ( existingSchoolLookUp.FirstOrDefault( s => s.Value == school ) != null )
-                            //{
-                            //    schoolNameInList = existingSchoolLookUp.FirstOrDefault( s => s.Value == school );
-                            //}
-
-                            //if ( ( !string.IsNullOrEmpty( schoolNameInList.Value ) ) || ( school == "Tarrant County Community" ) || ( school == "Pearcy" ) || ( school == "1" ) || ( school == "2" ) )
-                            //{
-                            //    if ( ( school == "Tarrant County Community" ) )
-                            //    {
-                            //        ReportProgress( 0, string.Format( "Existing School 2: {0}", existingSchoolLookUp.FirstOrDefault( s => s.Value == school ).Value /*schoolNameInList.Name*/) );
-                            //        person.Attributes.Add( schoolAttribute.Key, schoolAttribute );
-                            //        person.AttributeValues.Add( schoolAttribute.Key, new List<AttributeValue>() );
-                            //        person.AttributeValues[schoolAttribute.Key].Add( new AttributeValue()
-                            //        {
-                            //            AttributeId = schoolAttribute.Id,
-                            //            Value = "069D63BA-0CBF-4AC3-AB7E-243CE83B7268",                                  //string.Format("{0}", existingSchoolLookUp.FirstOrDefault(s => s.Name == school).Guid /*schoolNameInList.Guid*/),
-                            //            Order = 0
-                            //        } );
-                            //    }
-                            //    else if ( ( school == "Pearcy" ) )
-                            //    {
-                            //        ReportProgress( 0, string.Format( "Existing School 2: {0}", existingSchoolLookUp.FirstOrDefault( s => s.Value == school ).Value /*schoolNameInList.Name*/) );
-                            //        person.Attributes.Add( schoolAttribute.Key, schoolAttribute );
-                            //        person.AttributeValues.Add( schoolAttribute.Key, new List<AttributeValue>() );
-                            //        person.AttributeValues[schoolAttribute.Key].Add( new AttributeValue()
-                            //        {
-                            //            AttributeId = schoolAttribute.Id,
-                            //            Value = "88828194-3BFB-4F30-9D29-4719FEA6A9F6",                                  //string.Format("{0}", existingSchoolLookUp.FirstOrDefault(s => s.Name == school).Guid /*schoolNameInList.Guid*/),
-                            //            Order = 0
-                            //        } );
-                            //    }
-                            //    else
-                            //    {
-                            //        ReportProgress( 0, string.Format( "Existing School: {0}", existingSchoolLookUp.FirstOrDefault( s => s.Value == school ).Value /*schoolNameInList.Name*/) );
-                            //        person.Attributes.Add( schoolAttribute.Key, schoolAttribute );
-                            //        person.AttributeValues.Add( schoolAttribute.Key, new List<AttributeValue>() );
-                            //        person.AttributeValues[schoolAttribute.Key].Add( new AttributeValue()
-                            //        {
-                            //            AttributeId = schoolAttribute.Id,
-                            //            Value = string.Format( "{0}", existingSchoolLookUp.FirstOrDefault( s => s.Value == school ).Guid /*schoolNameInList.Guid*/),
-                            //            Order = 0
-                            //        } );
-                            //    }
-                            //}
+                            if ( ( !string.IsNullOrEmpty( schoolNameInList.Value ) ) )
+                            {
+                                    ReportProgress( 0, string.Format( "Existing School: {0}", existingSchoolLookUp.FirstOrDefault( s => s.Value == school ).Value /*schoolNameInList.Name*/) );
+                                    person.Attributes.Add( schoolAttribute.Key, schoolAttribute );
+                                    person.AttributeValues.Add( schoolAttribute.Key, new AttributeValue()
+                                    {
+                                        AttributeId = schoolAttribute.Id,
+                                        Value = string.Format( "{0}", existingSchoolLookUp.FirstOrDefault( s => s.Value == school ).Guid /*schoolNameInList.Guid*/),
+                                    } );
+                            }
                         }
 
                         DateTime? membershipDate = row["Status_Date"] as DateTime?;
