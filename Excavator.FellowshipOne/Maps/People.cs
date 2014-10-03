@@ -65,7 +65,7 @@ namespace Excavator.F1
             foreach ( var row in tableData )
             {
                 int? householdId = row["Household_ID"] as int?;
-                if ( GetPersonId( null, householdId ) == null )
+                if ( GetPersonAliasId( null, householdId ) == null )
                 {
                     var businessGroup = new Group();
                     var business = new Person();
@@ -84,14 +84,12 @@ namespace Excavator.F1
                     }
 
                     business.Attributes = new Dictionary<string, AttributeCache>();
-                    business.AttributeValues = new Dictionary<string, List<AttributeValue>>();
+                    business.AttributeValues = new Dictionary<string, AttributeValue>();
                     business.Attributes.Add( householdIdAttribute.Key, householdIdAttribute );
-                    business.AttributeValues.Add( householdIdAttribute.Key, new List<AttributeValue>() );
-                    business.AttributeValues[householdIdAttribute.Key].Add( new AttributeValue()
+                    business.AttributeValues.Add( householdIdAttribute.Key, new AttributeValue()
                     {
                         AttributeId = householdIdAttribute.Id,
                         Value = householdId.ToString(),
-                        Order = 0
                     } );
 
                     var groupMember = new GroupMember();
@@ -125,7 +123,7 @@ namespace Excavator.F1
                                     var person = businessMember.Person;
                                     foreach ( var attributeCache in person.Attributes.Select( a => a.Value ) )
                                     {
-                                        var newValue = person.AttributeValues[attributeCache.Key].FirstOrDefault();
+                                        var newValue = person.AttributeValues[attributeCache.Key];
                                         if ( newValue != null )
                                         {
                                             newValue.EntityId = person.Id;
@@ -165,7 +163,7 @@ namespace Excavator.F1
                             var person = groupMember.Person;
                             foreach ( var attributeCache in person.Attributes.Select( a => a.Value ) )
                             {
-                                var newValue = person.AttributeValues[attributeCache.Key].FirstOrDefault();
+                                var newValue = person.AttributeValues[attributeCache.Key];
                                 if ( newValue != null )
                                 {
                                     newValue.EntityId = person.Id;
@@ -277,7 +275,7 @@ namespace Excavator.F1
                     string currentCampus = string.Empty;
                     int? individualId = row["Individual_ID"] as int?;
                     int? householdId = row["Household_ID"] as int?;
-                    if ( GetPersonId( individualId, householdId ) == null )
+                    if ( GetPersonAliasId( individualId, householdId ) == null )
                     {
                         var person = new Person();
                         person.FirstName = row["First_Name"] as string;
@@ -420,18 +418,16 @@ namespace Excavator.F1
 
                         // Map F1 attributes
                         person.Attributes = new Dictionary<string, AttributeCache>();
-                        person.AttributeValues = new Dictionary<string, List<AttributeValue>>();
+                        person.AttributeValues = new Dictionary<string, AttributeValue>();
 
                         // individual_id already defined in scope
                         if ( individualId != null )
                         {
                             person.Attributes.Add( individualIdAttribute.Key, individualIdAttribute );
-                            person.AttributeValues.Add( individualIdAttribute.Key, new List<AttributeValue>() );
-                            person.AttributeValues[individualIdAttribute.Key].Add( new AttributeValue()
+                            person.AttributeValues.Add( individualIdAttribute.Key, new AttributeValue()
                             {
                                 AttributeId = individualIdAttribute.Id,
-                                Value = individualId.ToString(),
-                                Order = 0
+                                Value = individualId.ToString()
                             } );
                         }
 
@@ -439,12 +435,10 @@ namespace Excavator.F1
                         if ( householdId != null )
                         {
                             person.Attributes.Add( householdIdAttribute.Key, householdIdAttribute );
-                            person.AttributeValues.Add( householdIdAttribute.Key, new List<AttributeValue>() );
-                            person.AttributeValues[householdIdAttribute.Key].Add( new AttributeValue()
+                            person.AttributeValues.Add( householdIdAttribute.Key, new AttributeValue()
                             {
                                 AttributeId = householdIdAttribute.Id,
-                                Value = householdId.ToString(),
-                                Order = 0
+                                Value = householdId.ToString()
                             } );
                         }
 
@@ -452,12 +446,10 @@ namespace Excavator.F1
                         if ( previousChurch != null )
                         {
                             person.Attributes.Add( previousChurchAttribute.Key, previousChurchAttribute );
-                            person.AttributeValues.Add( previousChurchAttribute.Key, new List<AttributeValue>() );
-                            person.AttributeValues[previousChurchAttribute.Key].Add( new AttributeValue()
+                            person.AttributeValues.Add( previousChurchAttribute.Key, new AttributeValue()
                             {
                                 AttributeId = previousChurchAttribute.Id,
-                                Value = previousChurch,
-                                Order = 0
+                                Value = previousChurch
                             } );
                         }
 
@@ -465,12 +457,10 @@ namespace Excavator.F1
                         if ( employer != null )
                         {
                             person.Attributes.Add( employerAttribute.Key, employerAttribute );
-                            person.AttributeValues.Add( employerAttribute.Key, new List<AttributeValue>() );
-                            person.AttributeValues[employerAttribute.Key].Add( new AttributeValue()
+                            person.AttributeValues.Add( employerAttribute.Key, new AttributeValue()
                             {
                                 AttributeId = employerAttribute.Id,
-                                Value = employer,
-                                Order = 0
+                                Value = employer
                             } );
                         }
 
@@ -478,12 +468,10 @@ namespace Excavator.F1
                         if ( position != null )
                         {
                             person.Attributes.Add( positionAttribute.Key, positionAttribute );
-                            person.AttributeValues.Add( positionAttribute.Key, new List<AttributeValue>() );
-                            person.AttributeValues[positionAttribute.Key].Add( new AttributeValue()
+                            person.AttributeValues.Add( positionAttribute.Key, new AttributeValue()
                             {
                                 AttributeId = positionAttribute.Id,
-                                Value = position,
-                                Order = 0
+                                Value = position
                             } );
                         }
 
@@ -491,13 +479,11 @@ namespace Excavator.F1
                         if ( school != null )
                         {
                             person.Attributes.Add( schoolAttribute.Key, schoolAttribute );
-                            person.AttributeValues.Add( schoolAttribute.Key, new List<AttributeValue>() );
-                            person.AttributeValues[schoolAttribute.Key].Add( new AttributeValue()
+                            person.AttributeValues.Add( schoolAttribute.Key, new AttributeValue()
                             {
                                 AttributeId = schoolAttribute.Id,
                                 Value = checkSchool(school),
-                                Order = 0
-                            } );
+                       } );
 
                             //var schoolNameInList = new DefinedValue();
                             //if ( existingSchoolLookUp.FirstOrDefault( s => s.Value == school ) != null )
@@ -551,12 +537,10 @@ namespace Excavator.F1
                         {
                             person.CreatedDateTime = membershipDate;
                             person.Attributes.Add( membershipDateAttribute.Key, membershipDateAttribute );
-                            person.AttributeValues.Add( membershipDateAttribute.Key, new List<AttributeValue>() );
-                            person.AttributeValues[membershipDateAttribute.Key].Add( new AttributeValue()
+                            person.AttributeValues.Add( membershipDateAttribute.Key, new AttributeValue()
                             {
                                 AttributeId = membershipDateAttribute.Id,
-                                Value = membershipDate.Value.ToString( "MM/dd/yyyy" ),
-                                Order = 0
+                                Value = membershipDate.Value.ToString( "MM/dd/yyyy" )
                             } );
                         }
 
@@ -567,12 +551,10 @@ namespace Excavator.F1
                             // pick firstVisit if membershipDate is blank or null
                             firstVisit = firstVisit > membershipDate ? membershipDate : firstVisit;
                             person.Attributes.Add( firstVisitAttribute.Key, firstVisitAttribute );
-                            person.AttributeValues.Add( firstVisitAttribute.Key, new List<AttributeValue>() );
-                            person.AttributeValues[firstVisitAttribute.Key].Add( new AttributeValue()
+                            person.AttributeValues.Add( firstVisitAttribute.Key, new AttributeValue()
                             {
                                 AttributeId = firstVisitAttribute.Id,
-                                Value = firstVisit.Value.ToString( "MM/dd/yyyy" ),
-                                Order = 0
+                                Value = firstVisit.Value.ToString( "MM/dd/yyyy" )
                             } );
                         }
 
@@ -652,7 +634,7 @@ namespace Excavator.F1
                                         var person = groupMember.Person;
                                         foreach ( var attributeCache in person.Attributes.Select( a => a.Value ) )
                                         {
-                                            var newValue = person.AttributeValues[attributeCache.Key].FirstOrDefault();
+                                            var newValue = person.AttributeValues[attributeCache.Key];
                                             if ( newValue != null )
                                             {
                                                 newValue.EntityId = person.Id;
@@ -769,7 +751,7 @@ namespace Excavator.F1
                                 var person = groupMember.Person;
                                 foreach ( var attributeCache in person.Attributes.Select( a => a.Value ) )
                                 {
-                                    var newValue = person.AttributeValues[attributeCache.Key].FirstOrDefault();
+                                    var newValue = person.AttributeValues[attributeCache.Key];
                                     if ( newValue != null )
                                     {
                                         newValue.EntityId = person.Id;
@@ -971,7 +953,7 @@ namespace Excavator.F1
                 int? userId = row["UserID"] as int?;
                 if ( userId != null && individualId != null && !string.IsNullOrWhiteSpace( userName ) && !importedUsers.ContainsKey( (int)userId ) )
                 {
-                    int? personId = GetPersonId( individualId, null );
+                    int? personId = GetPersonAliasId( individualId, null );
                     if ( personId != null )
                     {
                         DateTime? createdDate = row["UserCreatedDate"] as DateTime?;
@@ -1027,14 +1009,12 @@ namespace Excavator.F1
                             if ( !string.IsNullOrWhiteSpace( secondaryEmail ) )
                             {
                                 person.Attributes = new Dictionary<string, AttributeCache>();
-                                person.AttributeValues = new Dictionary<string, List<AttributeValue>>();
+                                person.AttributeValues = new Dictionary<string, AttributeValue>();
                                 person.Attributes.Add( secondaryEmailAttribute.Key, secondaryEmailAttribute );
-                                person.AttributeValues.Add( secondaryEmailAttribute.Key, new List<AttributeValue>() );
-                                person.AttributeValues[secondaryEmailAttribute.Key].Add( new AttributeValue()
+                                person.AttributeValues.Add( secondaryEmailAttribute.Key, new AttributeValue()
                                 {
                                     AttributeId = secondaryEmailAttribute.Id,
-                                    Value = secondaryEmail,
-                                    Order = 0
+                                    Value = secondaryEmail
                                 } );
                             }
 
@@ -1068,7 +1048,7 @@ namespace Excavator.F1
                                 {
                                     foreach ( var person in updatedPersonList.Where( p => p.Attributes != null ) )
                                     {
-                                        var attributeValue = person.AttributeValues[secondaryEmailAttribute.Key].FirstOrDefault();
+                                        var attributeValue = person.AttributeValues[secondaryEmailAttribute.Key];
                                         if ( attributeValue != null )
                                         {
                                             attributeValue.EntityId = person.Id;
@@ -1106,7 +1086,7 @@ namespace Excavator.F1
                     {
                         foreach ( var person in updatedPersonList.Where( p => p.Attributes != null ) )
                         {
-                            var attributeValue = person.AttributeValues[secondaryEmailAttribute.Key].FirstOrDefault();
+                            var attributeValue = person.AttributeValues[secondaryEmailAttribute.Key];
                             if ( attributeValue != null )
                             {
                                 attributeValue.EntityId = person.Id;

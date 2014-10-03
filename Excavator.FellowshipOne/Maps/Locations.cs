@@ -500,10 +500,9 @@ namespace Excavator.F1
             {
                 int? individualId = row["Individual_ID"] as int?;
                 int? householdId = row["Household_ID"] as int?;
-                int? associatedPersonId = GetPersonId(individualId, householdId);
-
-                if (associatedPersonId != null)
-                {
+int? associatedPersonId = GetPersonAliasId( individualId, householdId );
+                if ( associatedPersonId != null )
+              {
                     var familyGroup = groupMembershipList.Where(gm => gm.PersonId == (int)associatedPersonId)
                         .Select(gm => gm.Group).FirstOrDefault();
 
@@ -549,8 +548,9 @@ namespace Excavator.F1
                             }
                             else if ( !string.IsNullOrEmpty( addressType ) )
                             {
-                                groupLocation.GroupLocationTypeValueId = groupLocationTypeList.Where( dv => dv.Value.Equals( addressType ) )
+                                var customTypeId = groupLocationTypeList.Where( dv => dv.Value.Equals( addressType ) )
                                     .Select( dv => (int?)dv.Id ).FirstOrDefault();
+                                groupLocation.GroupLocationTypeValueId = customTypeId ?? homeGroupLocationTypeId;
                             }
 
                             newGroupLocations.Add( groupLocation );
@@ -558,7 +558,7 @@ namespace Excavator.F1
 
                             if ( completed % percentage < 1 )
                             {
-                                int percentComplete = completed / percentage;
+ int percentComplete = completed / percentage;
                                 ReportProgress( percentComplete, string.Format( "{0:N0} addresses imported ({1}% complete).", completed, percentComplete ) );
                             }
                             else if ( completed % ReportingNumber < 1 )

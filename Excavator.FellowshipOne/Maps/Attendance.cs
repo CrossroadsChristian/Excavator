@@ -75,10 +75,9 @@ namespace Excavator.F1
                     int? rlcId = row["RLC_ID"] as int?;
 
                     int? individualId = row["Individual_ID"] as int?;
-
                         if ( individualId != null )
                         {
-                            attendance.PersonId = GetPersonId( individualId );
+                            attendance.PersonAliasId = GetPersonAliasId( individualId );
                         }
 
                         DateTime? checkInTime = row["Check_In_Time"] as DateTime?;
@@ -537,7 +536,7 @@ namespace Excavator.F1
                         }
                     default:
                         return location.Where(l => l.Name == "Main Building").FirstOrDefault().Id;
-                }
+               }
             }
             else
             {
