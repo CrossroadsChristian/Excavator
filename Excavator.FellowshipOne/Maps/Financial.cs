@@ -68,6 +68,15 @@ namespace Excavator.F1
                             bankAccount.AccountNumberMasked = accountNumber.ToString().Masked();
                             bankAccount.PersonAliasId = (int)personId;
 
+                            PersonAlias personAlias = new PersonAliasService( lookupContext ).Queryable().Where( a => a.PersonId == personId ).FirstOrDefault();
+                            if ( personAlias == null )
+                            {
+                                ReportProgress( 0, string.Format( "PersonAliasId: [ {3} ], PersonId: {0}, IndividualId: {1}, HouseholdId: {2}", personId, individualId, householdId, bankAccount.PersonAliasId /*,personAlias.Id*/ ) );
+                            }
+                            else
+                            {
+                                ReportProgress( 0, string.Format( "Id: [ {4} ], PersonAliasId: [ {3} ], PersonId: {0}, IndividualId: {1}, HouseholdId: {2}", personId, individualId, householdId, bankAccount.PersonAliasId, personAlias.Id ) );
+                            }
                             // Other Attributes (not used):
                             // Account_Type_Name
 
