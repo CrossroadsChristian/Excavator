@@ -223,7 +223,7 @@ namespace Excavator.F1
                                 break;
                             case "Groups":
                                 MapGroups( scanner.ScanTable( table.Name ).AsQueryable() );
-                                break;
+                                break; 
 
                             //case "ActivityMinistry":
                             //    MapActivityMinistry( scanner.ScanTable( table.Name ).AsQueryable() );
@@ -235,7 +235,23 @@ namespace Excavator.F1
 
                             case "Attendance":
                                 MapAttendance( scanner.ScanTable( table.Name ).AsQueryable() );
-                                break;
+                                break; 
+
+                            case "IndividualContactNotes":
+                                MapIndividualContactNotes( scanner.ScanTable( table.Name ).AsQueryable() );
+                                    break;
+                            case "GiftednessProgram":
+                                    MapGiftednessProgram( scanner.ScanTable( table.Name ).AsQueryable() );
+                                    break;
+                            case "IndividualGiftedness":
+                                    MapIndividualGiftedness( scanner.ScanTable( table.Name ).AsQueryable() );
+                                    break;
+                            case "Authorizations":
+                                    MapAuthorizations( scanner.ScanTable( table.Name ).AsQueryable() );
+                                    break;
+                            case "ActivityAssignment":
+                                MapActivityAssignment( scanner.ScanTable( table.Name ).AsQueryable() );
+                                    break;
 
                             default:
                                 break;

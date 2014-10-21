@@ -65,13 +65,19 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="F1Component.cs" />
+    <Compile Include="Maps\ActivityMinistry.cs" />
+    <Compile Include="Maps\Assignments.cs" />
     <Compile Include="Maps\Attendance.cs" />
     <Compile Include="Maps\Attributes.cs" />
+    <Compile Include="Maps\Authorizations.cs" />
+    <Compile Include="Maps\Giftedness.cs" />
     <Compile Include="Maps\Groups.cs" />
+    <Compile Include="Maps\IndividualContactNotes.cs" />
     <Compile Include="Maps\Notes.cs" />
     <Compile Include="Maps\Communication.cs" />
     <Compile Include="Maps\Financial.cs" />
     <Compile Include="Maps\Locations.cs" />
+    <Compile Include="Maps\RLC.cs" />
     <Compile Include="Model\Group_Attendance.cs" />
     <Compile Include="Model\GiftednessProgram.cs" />
     <Compile Include="Model\IndividualGiftedness.cs" />
