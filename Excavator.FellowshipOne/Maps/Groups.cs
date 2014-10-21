@@ -41,16 +41,22 @@ namespace Excavator.F1
             int completedMembers = 0;
             int completedGroups = 0;
             int completedLifeStages = 0;
+            int completedTags = 0;
+            int completedIndividualTags = 0;
             int totalRows = tableData.Count();
             int percentage = ( totalRows - 1 ) / 100 + 1;
             ReportProgress( 0, string.Format( "Verifying group import ({0:N0} found. Total may vary based on Group Type Name).", totalRows ) );
 
-            var rockContext = new RockContext();
 
             foreach ( var row in tableData )
             {
+                var rockContext = new RockContext();
+                var lifeStageContext = new RockContext();
+                var connectGroupContext = new RockContext();
+                var connectGroupMemberContext = new RockContext();
+
                 string groupTypeName = row["Group_Type_Name"] as string;
-                if ( groupTypeName.Trim() == "Connect Groups" )
+                if ( groupTypeName.Trim() == "Connect Groups" )            //Moves Connect Groups into Rock Groups
                 {
 
                     var groupTypeIdSection = new GroupTypeService( lookupContext ).Queryable().Where( gt => gt.Name == "Event/Serving/Small Group Section" ).Select( a => a.Id ).FirstOrDefault();
@@ -60,14 +66,14 @@ namespace Excavator.F1
                     string groupName = row["Group_Name"] as string;
                     int? groupId = row["Group_ID"] as int?;
                     int? individualId = row["Individual_ID"] as int?;
-                    int? personId = GetPersonId( individualId );
+                    int? personId = GetPersonAliasId( individualId );
                     DateTime? createdDateTime = row["Created_Date"] as DateTime?;
 
 
                     //Check to see if Head of Connect Group Tree exists
 
                     //If it doesn't exist
-                    if ( connectGroupsId == null || connectGroupsId == 0 )
+                    if ( connectGroupsId == 0 )
                     {
                         //Create one.
                         var connectGroupTree = new Group();
@@ -99,7 +105,7 @@ namespace Excavator.F1
 
                     //checks to see if it exists
                     int existingLifeStage = new GroupService( lookupContext ).Queryable().Where( g => g.Name == lifeStage ).Select( a => a.Id ).FirstOrDefault();
-                    if ( existingLifeStage == null || existingLifeStage == 0 )
+                    if ( existingLifeStage == 0 )
                     {
                         //Create one.
                         var connectGroupsLifeStage = new Group();
@@ -116,19 +122,19 @@ namespace Excavator.F1
 
                         //save Life Stage
 
-                        rockContext.WrapTransaction( () =>
+                        lifeStageContext.WrapTransaction( () =>
                         {
-                            rockContext.Configuration.AutoDetectChangesEnabled = false;
-                            rockContext.Groups.Add( connectGroupsLifeStage );
-                            rockContext.SaveChanges( DisableAudit );
+                            lifeStageContext.Configuration.AutoDetectChangesEnabled = false;
+                            lifeStageContext.Groups.Add( connectGroupsLifeStage );
+                            lifeStageContext.SaveChanges( DisableAudit );
                         } );
                         completedLifeStages++;
                     }
 
                     int existingConnectGroup = new GroupService( lookupContext ).Queryable().Where( g => g.Name == groupName ).Select( a => a.Id ).FirstOrDefault();
-
+                    existingLifeStage = new GroupService( lookupContext ).Queryable().Where( g => g.Name == lifeStage ).Select( a => a.Id ).FirstOrDefault();
                     //check to see if Connect Group exists.
-                    if ( existingConnectGroup == null || existingConnectGroup == 0 )
+                    if ( existingConnectGroup == 0 )
                     {
                         //Create one.
                         var connectGroups = new Group();
@@ -144,36 +150,42 @@ namespace Excavator.F1
                         connectGroups.CreatedDateTime = createdDateTime;
 
                         //Save Group
-                        rockContext.WrapTransaction( () =>
+                        connectGroupContext.WrapTransaction( () =>
                         {
-                            rockContext.Configuration.AutoDetectChangesEnabled = false;
-                            rockContext.Groups.Add( connectGroups );
-                            rockContext.SaveChanges( DisableAudit );
+                            connectGroupContext.Configuration.AutoDetectChangesEnabled = false;
+                            connectGroupContext.Groups.Add( connectGroups );
+                            connectGroupContext.SaveChanges( DisableAudit );
                         } );
                         completedGroups++;
                     }
 
+                    existingConnectGroup = new GroupService( lookupContext ).Queryable().Where( g => g.Name == groupName ).Select( a => a.Id ).FirstOrDefault();
+                    
+                    //Adds Group Member(s)
                     //makes sure Connect Group Exists
-                    if ( existingConnectGroup != null || existingConnectGroup != 0 )
+                    if ( existingConnectGroup != 0 )
                     {
-                        int memberGroupTypeRoleId = new GroupService( lookupContext ).Queryable().Where( g => g.Guid == new Guid( "F0806058-7E5D-4CA9-9C04-3BDF92739462" ) ).Select( a => a.Id ).FirstOrDefault();
-
-                        //adds member
-                        var connectGroupMember = new GroupMember();
-                        connectGroupMember.IsSystem = false;
-                        connectGroupMember.GroupId = existingConnectGroup;
-                        connectGroupMember.PersonId = (int)personId;
-                        connectGroupMember.GroupRoleId = memberGroupTypeRoleId; //will add them as a member
-
-                        //Save Member
-                        rockContext.WrapTransaction( () =>
+                        int memberGroupTypeRoleId = new GroupTypeRoleService( lookupContext ).Queryable().Where( g => g.GroupTypeId == groupTypeIdSmallGroup && g.Name == "Member" ).Select( a => a.Id ).FirstOrDefault();
+                        int groupMemberExists = new GroupMemberService( lookupContext ).Queryable().Where( g => g.GroupId == existingConnectGroup && g.PersonId == personId && g.GroupRoleId == memberGroupTypeRoleId ).Select( a => a.Id ).FirstOrDefault();
+                        if ( groupMemberExists == 0 )
                         {
-                            rockContext.Configuration.AutoDetectChangesEnabled = false;
-                            rockContext.GroupMembers.Add( connectGroupMember );
-                            rockContext.SaveChanges( DisableAudit );
-                        } );
-                        completedMembers++;
+                            //adds member
+                            var connectGroupMember = new GroupMember();
+                            connectGroupMember.IsSystem = false;
+                            connectGroupMember.GroupId = existingConnectGroup;
+                            connectGroupMember.PersonId = (int)personId;
+                            connectGroupMember.GroupRoleId = memberGroupTypeRoleId; //will add them as a member
+                            ReportProgress( 0, string.Format( "GroupId: {0}, GroupName: {3}, PersonID: {1}, GroupRoleId: {2}", connectGroupMember.GroupId, connectGroupMember.PersonId, connectGroupMember.GroupRoleId, groupName ) );
 
+                            //Save Member
+                            connectGroupMemberContext.WrapTransaction( () =>
+                            {
+                                connectGroupMemberContext.Configuration.AutoDetectChangesEnabled = false;
+                                connectGroupMemberContext.GroupMembers.Add( connectGroupMember );
+                                connectGroupMemberContext.SaveChanges( DisableAudit );
+                            } );
+                            completedMembers++;
+                        }
                     }
 
                     if ( completedMembers % percentage < 1 )
@@ -187,9 +199,128 @@ namespace Excavator.F1
                     }
 
                 }
+                if ( groupTypeName.Trim() == "People List" )    //Places People Lists in tags
+                {
+
+                    var tagService = new TagService( lookupContext );
+                    var entityTypeService = new EntityTypeService( lookupContext );
+                    var taggedItemService = new TaggedItemService( lookupContext );
+                    var personService = new PersonService( lookupContext );
+
+                    //var groupTypeIdSection = new GroupTypeService( lookupContext ).Queryable().Where( gt => gt.Name == "Event/Serving/Small Group Section" ).Select( a => a.Id ).FirstOrDefault();
+                    //var connectGroupsId = new GroupService( lookupContext ).Queryable().Where( g => g.Name == "Connect Groups" && g.GroupTypeId == groupTypeIdSection ).Select( a => a.Id ).FirstOrDefault();
+                    //var groupTypeIdSmallGroup = new GroupTypeService( lookupContext ).Queryable().Where( gt => gt.Name == "Small Group" ).Select( a => a.Id ).FirstOrDefault();
+
+
+                    string peopleListName = row["Group_Name"] as string;
+                    int? groupId = row["Group_ID"] as int?;
+                    int? individualId = row["Individual_ID"] as int?;
+                    int? personId = GetPersonAliasId( individualId );
+                    DateTime? createdDateTime = row["Created_Date"] as DateTime?;
+
+                    if ( personId != null )
+                    {
+                        //check if tag exists
+                        if ( tagService.Queryable().Where( t => t.Name == peopleListName ).FirstOrDefault() == null )
+                        {
+                            //create if it doesn't
+                            var newTag = new Tag();
+                            newTag.IsSystem = false;
+                            newTag.Name = peopleListName;
+                            newTag.EntityTypeQualifierColumn = string.Empty;
+                            newTag.EntityTypeQualifierValue = string.Empty;
+                            newTag.EntityTypeId = entityTypeService.Queryable().Where( e => e.Name == "Rock.Model.Person" ).FirstOrDefault().Id;
+
+                            //Save tag
+                            var tagContext = new RockContext();
+                            tagContext.WrapTransaction( () =>
+                            {
+                                tagContext.Configuration.AutoDetectChangesEnabled = false;
+                                tagContext.Tags.Add( newTag );
+                                tagContext.SaveChanges( DisableAudit );
+                            } );
+
+                            completedTags++;
+                        }
+
+                        var personAlias = new PersonAlias();
+                        personAlias = null;
+
+                        if ( tagService.Queryable().Where( t => t.Name == peopleListName ).FirstOrDefault() != null ) //Makes sure tag exists
+                        {
+                            //selects the ID of the current people list / tag
+                            int tagId = tagService.Queryable().Where( t => t.Name == peopleListName ).FirstOrDefault().Id;
+                            
+                            //gets the person instance in order to use person's GUID later.
+                            var personTagged = personService.Queryable().Where( p => p.Id == personId ).FirstOrDefault();
+                            if ( personTagged == null )
+                            {
+                                var personAliasService = new PersonAliasService(lookupContext);
+                                personAlias = personAliasService.Queryable().Where( p => p.PersonId == (int)personId ).FirstOrDefault();
+                                //ReportProgress( 0, string.Format( "Not able to tag person Id: {0} Tag Name: {1} F1 groupId: {2} Tag Id: {3}. ", personId, peopleListName, groupId, tagId ) );
+
+                            }
+
+                            //check if person already has this tag
+                            if ( personTagged != null && taggedItemService.Queryable().Where( t => t.EntityGuid == personTagged.Guid && t.TagId == tagId ).FirstOrDefault() == null )
+                            {
+
+                                //add tag if one doesn't exist for person.
+                                var taggedItem = new TaggedItem();
+                                taggedItem.IsSystem = false;
+                                taggedItem.TagId = tagId;
+                                taggedItem.EntityGuid = personTagged.Guid;
+                                taggedItem.CreatedDateTime = createdDateTime;
+
+                                //save tag
+                                var tagContext = new RockContext();
+                                tagContext.WrapTransaction( () =>
+                                {
+                                    tagContext.Configuration.AutoDetectChangesEnabled = false;
+                                    tagContext.TaggedItems.Add( taggedItem );
+                                    tagContext.SaveChanges( DisableAudit );
+                                } );
+
+                                completedIndividualTags++;
+                            }
+                            if ( personAlias != null && taggedItemService.Queryable().Where( t => t.EntityGuid == personAlias.AliasPersonGuid && t.TagId == tagId ).FirstOrDefault() == null )
+                            {
+
+                                //add tag if one doesn't exist for person.
+                                var taggedItem = new TaggedItem();
+                                taggedItem.IsSystem = false;
+                                taggedItem.TagId = tagId;
+                                taggedItem.EntityGuid = personAlias.AliasPersonGuid;
+                                taggedItem.CreatedDateTime = createdDateTime;
+
+                                //save tag
+                                var tagContext = new RockContext();
+                                tagContext.WrapTransaction( () =>
+                                {
+                                    tagContext.Configuration.AutoDetectChangesEnabled = false;
+                                    tagContext.TaggedItems.Add( taggedItem );
+                                    tagContext.SaveChanges( DisableAudit );
+                                } );
+
+                                completedIndividualTags++;
+                            }
+                        }
+                        //report Progress
+                        if ( completedIndividualTags != 0 )
+                        {
+                            if ( completedIndividualTags % percentage < 1 )
+                            {
+                                int percentComplete = completedIndividualTags / percentage;
+                                ReportProgress( percentComplete, string.Format( "People Lists / Tags Imported: {0:N0}, Tagged Individuals: {1:N0} ({2:N0}% complete). ", completedTags, completedIndividualTags, percentComplete ) );
+                            }
+                            else if ( completedMembers % ReportingNumber < 1 )
+                            {
+                                ReportPartialProgress();
+                            }
+                        }
+                    }
+                }
             }
-
         }
-
     }
 }
