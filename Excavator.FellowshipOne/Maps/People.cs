@@ -130,6 +130,10 @@ namespace Excavator.F1
                                             newAttributeValues.Add( newValue );
                                         }
                                     }
+                                    if ( !person.Aliases.Any( a => a.AliasPersonId == person.Id ) )
+                                    {
+                                        person.Aliases.Add( new PersonAlias { AliasPersonId = person.Id, AliasPersonGuid = person.Guid } );
+                                    }
 
                                     person.GivingGroupId = newBusiness.Id;
                                 }
@@ -169,6 +173,10 @@ namespace Excavator.F1
                                     newValue.EntityId = person.Id;
                                     newAttributeValues.Add( newValue );
                                 }
+                            }
+                            if ( !person.Aliases.Any( a => a.AliasPersonId == person.Id ) )
+                            {
+                               person.Aliases.Add( new PersonAlias { AliasPersonId = person.Id, AliasPersonGuid = person.Guid } );
                             }
 
                             person.GivingGroupId = newBusiness.Id;
@@ -337,7 +345,9 @@ namespace Excavator.F1
                         }
 
                         string memberStatus = row["Status_Name"] as string;
+                        if ( memberStatus != null ) { memberStatus = memberStatus.Trim(); }
                         string subStatus = row["SubStatus_Name"] as string; //To match Member Status' we have in F1
+                        if ( subStatus != null ) { subStatus = subStatus.Trim(); }
                         int attendeeId = connectionStatusTypes.FirstOrDefault( dv => dv.Guid == new Guid( "39F491C5-D6AC-4A9B-8AC0-C431CB17D588" ) ).Id;
                         if ( memberStatus == "Member" )
                         {
@@ -347,25 +357,27 @@ namespace Excavator.F1
                                 person.RecordStatusValueId = recordStatusActiveId;
                                 person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Member > Baptism" )
                                     .Select( dv => dv.Id ).FirstOrDefault();
+                               // ReportProgress( 0, string.Format( "***BAPTISM ConnectionStatusValueId: {0}, {1}, {2}", person.ConnectionStatusValueId, memberStatus, subStatus ) );
                             }
-                            if ( subStatus == "Connected" )
+                            else if ( subStatus == "Connected" )
                             {
                                 
                                 person.RecordStatusValueId = recordStatusActiveId;
-                                person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Member > Connected" )
+                                person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Member > Connected" ) 
                                     .Select( dv => dv.Id ).FirstOrDefault();
                             }
-                            if ( subStatus == "Transfer" )
+                            else if ( subStatus == "Transfer" )
                             {
                                 
                                 person.RecordStatusValueId = recordStatusActiveId;
-                                person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Member > Transfer" )
+                                person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Member > Transfer" ) 
                                     .Select( dv => dv.Id ).FirstOrDefault();
                             }
                             else
                             {
                                 person.ConnectionStatusValueId = connectionStatusTypes.FirstOrDefault( dv => dv.Guid == new Guid( Rock.SystemGuid.DefinedValue.PERSON_CONNECTION_STATUS_MEMBER ) ).Id;
                                 person.RecordStatusValueId = recordStatusActiveId;
+                                //ReportProgress( 0, string.Format( "***MEMBER ELSE ConnectionStatusValueId: {0}, {1}, {2}", person.ConnectionStatusValueId, memberStatus, subStatus ) );
                             }
                         }
                         else if ( memberStatus == "Visitor" )
@@ -379,38 +391,50 @@ namespace Excavator.F1
                             person.RecordStatusValueId = recordStatusInactiveId;
                             person.RecordStatusReasonValueId = recordStatusReasons.Where( dv => dv.Value == "Deceased" )
                                 .Select( dv => dv.Id ).FirstOrDefault();
+                            person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Deceased" )
+                               .Select( dv => dv.Id ).FirstOrDefault();
                         }
                         else if (memberStatus == "Dropped") //Crossroads Related
                         {
                             if (subStatus == "Member")
                             {
                                 person.RecordStatusValueId = recordStatusInactiveId;
-                                person.RecordStatusReasonValueId = recordStatusReasons.Where(dv => dv.Value == "Dropped > Member")
+                                person.RecordStatusReasonValueId = recordStatusReasons.Where(dv => dv.Value == "Dropped Member") 
                                     .Select(dv => dv.Id).FirstOrDefault();
+                                person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Dropped > Member" )
+                               .Select( dv => dv.Id ).FirstOrDefault();
                             }
                             else if (subStatus == "Non-Member")
                             {
                                 person.RecordStatusValueId = recordStatusInactiveId;
-                                person.RecordStatusReasonValueId = recordStatusReasons.Where(dv => dv.Value == "Dropped > Non-Member")
+                                person.RecordStatusReasonValueId = recordStatusReasons.Where( dv => dv.Value == "Dropped Non-Member" )  
                                     .Select(dv => dv.Id).FirstOrDefault();
+                                person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Dropped > Non-Member" )
+                               .Select( dv => dv.Id ).FirstOrDefault();
                             }
                             else if ( subStatus == "Beliefs" )
                             {
                                 person.RecordStatusValueId = recordStatusInactiveId;
-                                person.RecordStatusReasonValueId = recordStatusReasons.Where( dv => dv.Value == "Dropped > Beliefs" )
+                                person.RecordStatusReasonValueId = recordStatusReasons.Where( dv => dv.Value == "Beliefs" )  
                                     .Select( dv => dv.Id ).FirstOrDefault();
+                                person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Dropped > Beliefs" )
+                               .Select( dv => dv.Id ).FirstOrDefault();
                             }
                             else if ( subStatus == "Disagreement" )
                             {
                                 person.RecordStatusValueId = recordStatusInactiveId;
-                                person.RecordStatusReasonValueId = recordStatusReasons.Where( dv => dv.Value == "Dropped > Disagreement" )
+                                person.RecordStatusReasonValueId = recordStatusReasons.Where( dv => dv.Value == "Disagreement" )
                                     .Select( dv => dv.Id ).FirstOrDefault();
+                                person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Dropped > Disagreement" )
+                               .Select( dv => dv.Id ).FirstOrDefault();
                             }
                             else
                             {
                                 person.RecordStatusValueId = recordStatusInactiveId;
                                 person.RecordStatusReasonValueId = recordStatusReasons.Where(dv => dv.Value == "Dropped")
                                     .Select(dv => dv.Id).FirstOrDefault();
+                                person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Dropped" )
+                               .Select( dv => dv.Id ).FirstOrDefault();
                             }
                         }
                         else if ( memberStatus == "Child of Member" )
@@ -432,6 +456,13 @@ namespace Excavator.F1
 
                             person.RecordStatusValueId = recordStatusActiveId;
                             person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "1st Time" )
+                                .Select( dv => dv.Id ).FirstOrDefault();
+                        }
+                        else if ( memberStatus == "2nd Time" )
+                        {
+
+                            person.RecordStatusValueId = recordStatusActiveId;
+                            person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "2nd Time" )
                                 .Select( dv => dv.Id ).FirstOrDefault();
                         }
                         else if ( memberStatus == "Angel Tree Recipient" )
@@ -580,7 +611,9 @@ namespace Excavator.F1
                            
                             person.ConnectionStatusValueId = customConnectionType ?? attendeeId;
                             person.RecordStatusValueId = recordStatusActiveId;
+                           // ReportProgress( 0, string.Format( "***ELSE ConnectionStatusValueId: {0}, {1}, {2}", person.ConnectionStatusValueId, memberStatus, subStatus ) );
                         }
+                        //ReportProgress( 0, string.Format( "ConnectionStatusValueId: {0}, {1}, {2}, [ {3} ]", person.ConnectionStatusValueId, memberStatus, subStatus, person.RecordStatusReasonValueId ) );
 
                         string campus = row["SubStatus_Name"] as string;
                         if ( campus != null )
@@ -688,7 +721,7 @@ namespace Excavator.F1
 
                             if ( ( !string.IsNullOrEmpty( schoolNameInList.Value ) ) )
                             {
-                                    ReportProgress( 0, string.Format( "Existing School: {0}", existingSchoolLookUp.FirstOrDefault( s => s.Value == school ).Value /*schoolNameInList.Name*/) );
+                                    //ReportProgress( 0, string.Format( "Existing School: {0}", existingSchoolLookUp.FirstOrDefault( s => s.Value == school ).Value /*schoolNameInList.Name*/) );
                                     person.Attributes.Add( schoolAttribute.Key, schoolAttribute );
                                     person.AttributeValues.Add( schoolAttribute.Key, new AttributeValue()
                                     {
