@@ -191,7 +191,9 @@ namespace Excavator.F1
                                 secondaryEmail = value;
                             }
 
-                            if ( !string.IsNullOrWhiteSpace( secondaryEmail ) )
+                            var existingSecondaryEmail = new AttributeValueService( lookupContext ).Queryable().Where( av => av.AttributeId == SecondaryEmailAttributeId && av.EntityId == person.Id ).FirstOrDefault();
+
+                            if ( !string.IsNullOrWhiteSpace( secondaryEmail ) && existingSecondaryEmail == null )
                             {
                                 person.Attributes.Add( secondaryEmailAttribute.Key, secondaryEmailAttribute );
                                 person.AttributeValues.Add( secondaryEmailAttribute.Key, new AttributeValue()
@@ -212,12 +214,16 @@ namespace Excavator.F1
                         }
                         else if ( type.Contains( "Facebook" ) )
                         {
-                            person.Attributes.Add( facebookAttribute.Key, facebookAttribute );
-                            person.AttributeValues.Add( facebookAttribute.Key, new AttributeValue()
+                            var existingFacebook = new AttributeValueService( lookupContext ).Queryable().Where( av => av.AttributeId == facebookAttribute.Id && av.EntityId == person.Id ).FirstOrDefault();
+                            if ( existingFacebook == null )
                             {
-                                AttributeId = facebookAttribute.Id,
-                                Value = value
-                            } );
+                                person.Attributes.Add( facebookAttribute.Key, facebookAttribute );
+                                person.AttributeValues.Add( facebookAttribute.Key, new AttributeValue()
+                                {
+                                    AttributeId = facebookAttribute.Id,
+                                    Value = value
+                                } );
+                            }
                         }
                         else if ( type.Contains( "Instagram" ) )
                         {
