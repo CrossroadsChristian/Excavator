@@ -85,8 +85,15 @@ namespace Excavator.F1
                         {
                             note.NoteTypeId = noteTimelineTypeId;
                         }
+                        var rockContext = new RockContext();
+                        rockContext.WrapTransaction( () =>
+                        {
+                            rockContext.Configuration.AutoDetectChangesEnabled = false;
+                            rockContext.Notes.Add( note );
+                            rockContext.SaveChanges( DisableAudit );
+                        } );
 
-                        noteList.Add( note );
+                        //noteList.Add( note );
                         completed++;
 
                         if ( completed % percentage < 1 )
@@ -96,13 +103,13 @@ namespace Excavator.F1
                         }
                         else if ( completed % ReportingNumber < 1 )
                         {
-                            var rockContext = new RockContext();
-                            rockContext.WrapTransaction( () =>
-                            {
-                                rockContext.Configuration.AutoDetectChangesEnabled = false;
-                                rockContext.Notes.AddRange( noteList );
-                                rockContext.SaveChanges( DisableAudit );
-                            } );
+                            //var rockContext = new RockContext();
+                            //rockContext.WrapTransaction( () =>
+                            //{
+                            //    rockContext.Configuration.AutoDetectChangesEnabled = false;
+                            //    rockContext.Notes.AddRange( noteList );
+                            //    rockContext.SaveChanges( DisableAudit );
+                            //} );
 
                             ReportPartialProgress();
                         }
