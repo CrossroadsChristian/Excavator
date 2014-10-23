@@ -75,6 +75,7 @@ namespace Excavator.F1
                     int? rlcId = row["RLC_ID"] as int?;
 
                     int? individualId = row["Individual_ID"] as int?;
+
                         if ( individualId != null )
                         {
                             attendance.PersonAliasId = GetPersonAliasId( individualId );
@@ -171,9 +172,10 @@ namespace Excavator.F1
 
                         ReportPartialProgress();
                 }
-                }
-            }
+              }
+           }
         }
+
 
         private DateTime BruteForceDateTime(DateTime? oldtDateTime)
         {
@@ -548,6 +550,21 @@ namespace Excavator.F1
 
         }
 
+
+        /// <summary>
+        /// Saves the attendance.
+        /// </summary>
+        /// <param name="attendance">The attendance.</param>
+        private static void SaveAttendance( Rock.Model.Attendance attendance )
+        {
+            var rockContext = new RockContext();
+            rockContext.WrapTransaction( () =>
+            {
+                rockContext.Configuration.AutoDetectChangesEnabled = false;
+                rockContext.Attendances.Add( attendance );
+                rockContext.SaveChanges( DisableAudit );
+            } );
+        }
 
     }
 }

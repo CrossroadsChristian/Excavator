@@ -285,7 +285,10 @@ namespace Excavator
             connectWindow.ResizeMode = ResizeMode.NoResize;
             connectWindow.SizeToContent = SizeToContent.WidthAndHeight;
             connectWindow.WindowStartupLocation = WindowStartupLocation.CenterOwner;
-            var showWindow = connectWindow.ShowDialog();
+
+            bool? isConnected = connectWindow.ShowDialog();
+
+            // Undo graphical effects
             this.OpacityMask = null;
             this.Effect = null;
 
@@ -330,8 +333,7 @@ namespace Excavator
 
             if ( rockContext == null )
             {
-                rockContext = new ConnectionStringSettings( "RockContext", CurrentConnection );
-                rockContext.ProviderName = "System.Data.SqlClient";
+                rockContext = new ConnectionStringSettings( "RockContext", CurrentConnection, "System.Data.SqlClient" );
                 appConfig.ConnectionStrings.ConnectionStrings.Add( rockContext );
             }
             else
