@@ -68,15 +68,15 @@ namespace Excavator.F1
                             bankAccount.AccountNumberMasked = accountNumber.ToString().Masked();
                             bankAccount.PersonAliasId = (int)personId;
 
-                            PersonAlias personAlias = new PersonAliasService( lookupContext ).Queryable().Where( a => a.PersonId == personId ).FirstOrDefault();
-                            if ( personAlias == null )
-                            {
-                                ReportProgress( 0, string.Format( "PersonAliasId: [ {3} ], PersonId: {0}, IndividualId: {1}, HouseholdId: {2}", personId, individualId, householdId, bankAccount.PersonAliasId /*,personAlias.Id*/ ) );
-                            }
-                            else
-                            {
-                                ReportProgress( 0, string.Format( "Id: [ {4} ], PersonAliasId: [ {3} ], PersonId: {0}, IndividualId: {1}, HouseholdId: {2}", personId, individualId, householdId, bankAccount.PersonAliasId, personAlias.Id ) );
-                            }
+                            //PersonAlias personAlias = new PersonAliasService( lookupContext ).Queryable().Where( a => a.PersonId == personId ).FirstOrDefault();
+                            //if ( personAlias == null )
+                            //{
+                            //    ReportProgress( 0, string.Format( "PersonAliasId: [ {3} ], PersonId: {0}, IndividualId: {1}, HouseholdId: {2}", personId, individualId, householdId, bankAccount.PersonAliasId /*,personAlias.Id*/ ) );
+                            //}
+                            //else
+                            //{
+                            //    ReportProgress( 0, string.Format( "Id: [ {4} ], PersonAliasId: [ {3} ], PersonId: {0}, IndividualId: {1}, HouseholdId: {2}", personId, individualId, householdId, bankAccount.PersonAliasId, personAlias.Id ) );
+                            //}
                             // Other Attributes (not used):
                             // Account_Type_Name
 
@@ -216,6 +216,7 @@ namespace Excavator.F1
             int transactionEntityTypeId = EntityTypeCache.Read( "Rock.Model.FinancialTransaction" ).Id;
 
             var transactionTypeContributionId = DefinedValueCache.Read( new Guid( Rock.SystemGuid.DefinedValue.TRANSACTION_TYPE_CONTRIBUTION ) ).Id;
+            var transactionTypeEventRegistrationId = DefinedValueCache.Read( new Guid( Rock.SystemGuid.DefinedValue.TRANSACTION_TYPE_EVENT_REGISTRATION ) ).Id;
 
             int currencyTypeACH = DefinedValueCache.Read( new Guid( Rock.SystemGuid.DefinedValue.CURRENCY_TYPE_ACH ) ).Id;
             int currencyTypeCash = DefinedValueCache.Read( new Guid( Rock.SystemGuid.DefinedValue.CURRENCY_TYPE_CASH ) ).Id;
@@ -249,7 +250,13 @@ namespace Excavator.F1
                 if ( contributionId != null && !importedContributions.ContainsKey( contributionId ) )
                 {
                     var transaction = new FinancialTransaction();
-                    transaction.TransactionTypeValueId = transactionTypeContributionId;
+
+                    string fundName = row["Fund_Name"] as string;
+
+                    //Crossroads - Anything under a fund name that starts with Receipt - is an Event Registration.
+                    if ( fundName.StartsWith( "Receipt -" ) ) { transaction.TransactionTypeValueId = transactionTypeEventRegistrationId; }
+                    else { transaction.TransactionTypeValueId = transactionTypeContributionId; }
+                    
                     transaction.AuthorizedPersonAliasId = GetPersonAliasId( individualId, householdId );
                     transaction.CreatedByPersonAliasId = ImportPersonAlias.Id;
                     transaction.ProcessedByPersonAliasId = GetPersonAliasId( individualId, householdId );
@@ -307,12 +314,13 @@ namespace Excavator.F1
                         transaction.CheckMicrEncrypted = Encryption.EncryptString( string.Format( "{0}_{1}_{2}", 0, 0, checkNumber ) );
                     }
 
-                    string fundName = row["Fund_Name"] as string;
+                    
                     decimal? amount = row["Amount"] as decimal?;
                     if ( fundName != null & amount != null )
                     {
                         FinancialAccount matchingAccount = null;
                         int? parentAccountId = null;
+                        string parentAccountName = String.Empty;
                         int? fundCampusId = null;
                         fundName = fundName.Trim();
 
@@ -345,7 +353,11 @@ namespace Excavator.F1
                                         parentAccount = new FinancialAccount();
                                         parentAccount.Name = fundName;
                                         parentAccount.PublicName = fundName;
-                                        parentAccount.IsTaxDeductible = true;
+
+                                        //Crossroads - Any fund name or subfund that starts with Receipt - is an Event Registration and is not tax deductible
+                                        if ( fundName.StartsWith( "Receipt -" ) ) { parentAccount.IsTaxDeductible = false; }
+                                        else { parentAccount.IsTaxDeductible = true; }
+                        
                                         parentAccount.IsActive = true;
                                         parentAccount.CampusId = fundCampusId;
                                         parentAccount.CreatedByPersonAliasId = ImportPersonAlias.Id;
@@ -358,6 +370,7 @@ namespace Excavator.F1
                                     // set data for subfund to be created
                                     parentAccountId = parentAccount.Id;
                                     fundName = subFund;
+                                    parentAccountName = parentAccount.Name;
                                 }
                             }
                         }
@@ -373,7 +386,11 @@ namespace Excavator.F1
                             matchingAccount.Name = fundName;
                             matchingAccount.PublicName = fundName;
                             matchingAccount.ParentAccountId = parentAccountId;
-                            matchingAccount.IsTaxDeductible = true;
+
+                            //Crossroads - Any fund name or subfund that starts with Receipt - is an Event Registration and is not tax deductible
+                            if ( fundName.StartsWith( "Receipt -" ) || parentAccountName.StartsWith("Receipt -")) { matchingAccount.IsTaxDeductible = false; }
+                            else { matchingAccount.IsTaxDeductible = true; }
+                            
                             matchingAccount.IsActive = true;
                             matchingAccount.CampusId = fundCampusId;
                             matchingAccount.CreatedByPersonAliasId = ImportPersonAlias.Id;
@@ -389,6 +406,7 @@ namespace Excavator.F1
                         transactionDetail.AccountId = matchingAccount.Id;
                         transactionDetail.IsNonCash = isTypeNonCash;
                         transaction.TransactionDetails.Add( transactionDetail );
+                        
 
                         if ( amount < 0 )
                         {
