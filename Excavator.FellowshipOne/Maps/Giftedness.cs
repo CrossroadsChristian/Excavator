@@ -241,7 +241,7 @@ namespace Excavator.F1
                 }
             }
 
-            ReportProgress( 100, string.Format( "Finished note import: {0:N0} spiritual gifts attributes imported.", completed ) );
+            ReportProgress( 100, string.Format( "Finished spiritual gifts import: {0:N0} spiritual gifts attributes imported.", completed ) );
         }
         /// <summary>
         /// Maps the Individual Giftedness.
@@ -346,7 +346,7 @@ namespace Excavator.F1
                 } );
             }
 
-            ReportProgress( 100, string.Format( "Finished note import: {0:N0} spiritual gifts imported.", completed ) );
+            ReportProgress( 100, string.Format( "Finished individual gifts import: {0:N0} spiritual gifts imported.", completed ) );
         }
     }
 }
