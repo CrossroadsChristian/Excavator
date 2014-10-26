@@ -28,7 +28,6 @@ namespace Excavator.F1
     partial class F1Component
     {
         /// <summary>
-
         /// Maps the family address.
         /// </summary>
         /// <param name="tableData">The table data.</param>
@@ -46,6 +45,8 @@ namespace Excavator.F1
             int previousGroupLocationTypeId = groupLocationTypeList.FirstOrDefault( dv => dv.Guid == new Guid( Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_PREVIOUS ) ).Id;
 
             var newGroupLocations = new List<GroupLocation>();
+            var householdAVList = new AttributeValueService( lookupContext ).Queryable().Where( av => av.AttributeId == HouseholdAttributeId ).ToList();
+
 
             int completed = 0;
             int totalRows = tableData.Count();
@@ -54,13 +55,17 @@ namespace Excavator.F1
 
             foreach ( var row in tableData )
             {
-                int? individualId = row["Individual_ID"] as int?;
+                int? individualId = row["Individual_ID"] as int?; //null
                 int? householdId = row["Household_ID"] as int?;
-                int? associatedPersonId = GetPersonAliasId( individualId, householdId );
-                if ( associatedPersonId != null )
+                //int? associatedPersonId = GetPersonAliasId( individualId, householdId ); //first person it will find is a visitor or child
+                int? associatedPersonId;
+                if ( individualId != null ) { associatedPersonId = GetPersonAliasId( individualId, householdId ); } //will get the exact person if Individual Id is not null.
+                else { associatedPersonId = GetPersonId( householdAVList, householdId ); }
+
+                if ( associatedPersonId != null ) //Will choose Head first, then Spouse, then Child (will disregard visitor and other)
                 {
                     var familyGroup = groupMembershipList.Where( gm => gm.PersonId == (int)associatedPersonId )
-                        .Select( gm => gm.Group ).FirstOrDefault();
+                        .Select( gm => gm.Group ).FirstOrDefault(); //will assign this household address to this person's family and not the originating family.
 
                     if ( familyGroup != null )
                     {
@@ -136,6 +141,36 @@ namespace Excavator.F1
             }
 
             ReportProgress( 100, string.Format( "Finished address import: {0:N0} addresses imported.", completed ) );
+        }
+
+        private int? GetPersonId(List<AttributeValue> householdAVList, int? householdId)
+        {
+            var lookupContext = new RockContext();
+
+            int? associatedPersonId = null;
+            
+            var head = householdAVList.FirstOrDefault( p => p.Value == householdId.ToString() && p.ForeignId == "head" );
+            if ( head == null )
+            {
+                var spouse = householdAVList.FirstOrDefault( p => p.Value == householdId.ToString() && p.ForeignId == "spouse" );
+                if ( spouse == null )
+                {
+                    var child = householdAVList.FirstOrDefault( p => p.Value == householdId.ToString() && p.ForeignId == "child" );
+                    if ( child != null )
+                    {
+                       return associatedPersonId = child.EntityId;
+                    }
+                }
+                else
+                {
+                   return associatedPersonId = spouse.EntityId;
+                }
+            }
+            else
+            {
+               return associatedPersonId = head.EntityId;
+            }
+            return associatedPersonId; //Only other two that wouldn't be pulled are 'Other' and 'Visitor' but we need the family to keep the data.
         }
 
         /// <summary>
