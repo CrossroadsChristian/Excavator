@@ -173,6 +173,7 @@ namespace Excavator.F1
         {
             var lookupContext = new RockContext();
             var groupTypeRoleService = new GroupTypeRoleService( lookupContext );
+            var dvService = new DefinedValueService( lookupContext );
 
             var schoolList = new List<DefinedValue>();
             var newSchool = new DefinedValue();
@@ -312,6 +313,8 @@ namespace Excavator.F1
                         }
 
                         string memberStatus = row["Status_Name"].ToString().ToLower();
+                        string subStatus = row["SubStatus_Name"] as string;
+                        int attendeeId = connectionStatusTypes.FirstOrDefault( dv => dv.Guid == new Guid( Rock.SystemGuid.DefinedValue.PERSON_CONNECTION_STATUS_ATTENDEE ) ).Id;
                         if ( memberStatus == "member" )
 
                         {
@@ -516,7 +519,7 @@ namespace Excavator.F1
                         }
                         else if ( memberStatus == "out of town" )
                         {
-                            if ( subStatus == "away at college" )
+                            if ( subStatus == "Away at College" )
                             {
                                 person.RecordStatusValueId = recordStatusActiveId;
                                 person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value == "Out of Town > Away at College" )
@@ -571,7 +574,6 @@ namespace Excavator.F1
                             var customConnectionType = connectionStatusTypes.Where( dv => dv.Value == memberStatus )
                                 .Select( dv => (int?)dv.Id ).FirstOrDefault();
 
-                          int attendeeId = connectionStatusTypes.FirstOrDefault( dv => dv.Guid == new Guid( Rock.SystemGuid.DefinedValue.PERSON_CONNECTION_STATUS_ATTENDEE ) ).Id;
                            person.ConnectionStatusValueId = customConnectionType ?? attendeeId;
                             person.RecordStatusValueId = recordStatusActiveId;
                            // ReportProgress( 0, string.Format( "***ELSE ConnectionStatusValueId: {0}, {1}, {2}", person.ConnectionStatusValueId, memberStatus, subStatus ) );
@@ -615,7 +617,7 @@ namespace Excavator.F1
                         AddPersonAttribute( individualIdAttribute, person, individualId.ToString() );
 
                         // household_id already defined in scope
-                        AddPersonAttribute( householdIdAttribute, person, householdId.ToString() );
+                        AddPersonAttribute( householdIdAttribute, person, householdId.ToString(), familyRole );
 
                         string previousChurch = row["Former_Church"] as string;
                         AddPersonAttribute( previousChurchAttribute, person, previousChurch );
@@ -629,12 +631,6 @@ namespace Excavator.F1
                         string school = row["School_Name"] as string;
                        if ( school != null )
                         {
-                       //     person.Attributes.Add( schoolAttribute.Key, schoolAttribute );
-                       //     person.AttributeValues.Add( schoolAttribute.Key, new AttributeValue()
-                       //     {
-                       //         AttributeId = schoolAttribute.Id,
-                       //         Value = checkSchool(school),
-                       //} );
                             school = school.Trim();
                             var schoolNameInList = new DefinedValue();
                             if ( existingSchoolLookUp.FirstOrDefault( s => s.Value == school ) != null )
@@ -644,7 +640,6 @@ namespace Excavator.F1
 
                             if ( ( !string.IsNullOrEmpty( schoolNameInList.Value ) ) )
                             {
-                                    //ReportProgress( 0, string.Format( "Existing School: {0}", existingSchoolLookUp.FirstOrDefault( s => s.Value == school ).Value /*schoolNameInList.Name*/) );
                                     person.Attributes.Add( schoolAttribute.Key, schoolAttribute );
                                     person.AttributeValues.Add( schoolAttribute.Key, new AttributeValue()
                                     {
@@ -1118,7 +1113,7 @@ namespace Excavator.F1
         /// <param name="attribute">The attribute.</param>
         /// <param name="person">The person.</param>
         /// <param name="value">The value.</param>
-        private static void AddPersonAttribute( AttributeCache attribute, Person person, string value )
+        private static void AddPersonAttribute( AttributeCache attribute, Person person, string value, string familyRole = "" )
         {
             if ( !string.IsNullOrWhiteSpace( value ) )
             {
@@ -1126,7 +1121,8 @@ namespace Excavator.F1
                 person.AttributeValues.Add( attribute.Key, new AttributeValue()
                 {
                     AttributeId = attribute.Id,
-                    Value = value
+                    Value = value,
+                    ForeignId = familyRole  //Attempting to correct the contribution, address, phone # issues where the visitor or child is selected before the adult.
                 } );
             }
         }
