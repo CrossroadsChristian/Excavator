@@ -174,6 +174,7 @@ namespace Excavator.F1
                     else if ( completed % ReportingNumber < 1 )
                     {
                         SaveFinancialBatches( newBatches );
+                        newBatches.ForEach( b => ImportedBatches.Add( b.ForeignId.AsType<int>(), (int?)b.Id ) );
                         newBatches.Clear();
                         ReportPartialProgress();
                     }
@@ -183,6 +184,7 @@ namespace Excavator.F1
             if ( newBatches.Any() )
             {
                 SaveFinancialBatches( newBatches );
+                newBatches.ForEach( b => ImportedBatches.Add( b.ForeignId.AsType<int>(), (int?)b.Id ) );
             }
 
             ReportProgress( 100, string.Format( "Finished batch import: {0:N0} batches imported.", completed ) );
@@ -231,8 +233,6 @@ namespace Excavator.F1
                .ToDictionary( t => t.ContributionId.AsType<int?>(), t => (int?)t.TransactionId );
 
             var householdAVList = new AttributeValueService( lookupContext ).Queryable().Where( av => av.AttributeId == HouseholdAttributeId ).ToList();
-            var importedBatches = new FinancialBatchService( lookupContext ).Queryable().Select( b => new { F1Batch = b.ForeignId, RockBatch = b.Id } )
-                .ToDictionary( t => t.F1Batch.AsType<int?>(), t => t.RockBatch );
 
             // List for batching new contributions
             var newTransactions = new List<FinancialTransaction>();
@@ -241,6 +241,7 @@ namespace Excavator.F1
             int totalRows = tableData.Count();
             int percentage = ( totalRows - 1 ) / 100 + 1;
             ReportProgress( 0, string.Format( "Verifying contribution import ({0:N0} found, {1:N0} already exist).", totalRows, importedContributions.Count() ) );
+            
             foreach ( var row in tableData )
             {
                 int? individualId = row["Individual_ID"] as int?;
@@ -276,8 +277,7 @@ namespace Excavator.F1
                         int? batchId = row["BatchID"] as int?;
                         if ( batchId != null && ImportedBatches.Any( b => b.Key == batchId ) )
                         {
-                            //transaction.BatchId = ImportedBatches.FirstOrDefault( b => b.Key == batchId ).Value;
-                            transaction.BatchId = importedBatches.FirstOrDefault( b => b.Key == batchId ).Value;
+                            transaction.BatchId = ImportedBatches.FirstOrDefault( b => b.Key == batchId ).Value;
                         }
 
                         DateTime? receivedDate = row["Received_Date"] as DateTime?;
@@ -377,7 +377,7 @@ namespace Excavator.F1
                             {
 
                                 // No account matches, create the new account with campus Id and parent Id if they were set
-                                matchingAccount = AddAccount( lookupContext, fundName, fundCampusId, parentAccountName );
+                                matchingAccount = AddAccount( lookupContext, fundName, fundCampusId, parentAccountName, parentAccountId );
 
                                 accountList.Add( matchingAccount );
                             }
@@ -578,12 +578,13 @@ namespace Excavator.F1
         /// <param name="fundName">Name of the fund.</param>
         /// <param name="fundCampusId">The fund campus identifier.</param>
         /// <returns></returns>
-        private FinancialAccount AddAccount( RockContext lookupContext, string fundName, int? fundCampusId, string parentAccountName = "" )
+        private FinancialAccount AddAccount( RockContext lookupContext, string fundName, int? fundCampusId, string parentAccountName = "", int? parentAcountId = null )
         {
             if ( lookupContext == null )
             {
                 lookupContext = new RockContext();
             }
+
 
             var account = new FinancialAccount();
             account.Name = fundName;
@@ -591,7 +592,7 @@ namespace Excavator.F1
             int financialAccountTypeId = DefinedTypeCache.Read( new Guid( Rock.SystemGuid.DefinedType.FINANCIAL_ACCOUNT_TYPE ) ).Id;
 
             //Adding Account Type Value
-            var givingAccountTypeValue = new DefinedValueService(lookupContext).Queryable().Where(d => d.DefinedTypeId == financialAccountTypeId && d.Value == "Giving").FirstOrDefault();
+            var givingAccountTypeValue = new DefinedValueService( lookupContext ).Queryable().Where( d => d.DefinedTypeId == financialAccountTypeId && d.Value == "Giving" ).FirstOrDefault();
             if ( givingAccountTypeValue == null )
             {
                 var accountType = new DefinedValue();
@@ -622,18 +623,22 @@ namespace Excavator.F1
 
 
             //Crossroads funds that start with Receipts are for Event Registrations and are not Tax Deductible.
-            if ( fundName.StartsWith( "Receipts -" ) || parentAccountName.StartsWith( "Receipt -" ) ) 
-            { 
-                account.IsTaxDeductible = false; 
-                account.AccountTypeValueId = eventAccountTypeValue.Id; 
+            if ( fundName.StartsWith( "Receipts -" ) || fundName.StartsWith( "Receipt -" ) || parentAccountName.StartsWith( "Receipt -" ) )
+            {
+                account.IsTaxDeductible = false;
+                account.AccountTypeValueId = eventAccountTypeValue.Id;
 
             }
-            else 
-            { 
-                account.IsTaxDeductible = true; 
-                account.AccountTypeValueId = givingAccountTypeValue.Id; 
+            else
+            {
+                account.IsTaxDeductible = true;
+                account.AccountTypeValueId = givingAccountTypeValue.Id;
             }
-            
+
+            if (parentAcountId != null ) {
+                account.ParentAccountId = parentAcountId;
+            }
+
             account.IsActive = true;
             account.CampusId = fundCampusId;
             account.CreatedByPersonAliasId = ImportPersonAlias.Id;
