@@ -79,13 +79,14 @@ namespace Excavator.F1
                     {
                         businessName.Replace( "&#39;", "'" );
                         businessName.Replace( "&amp;", "&" );
-                        business.FirstName = businessName.Left( 50 );
+                        business.LastName = businessName.Left( 50 );
                         businessGroup.Name = businessName.Left( 50 );
                     }
+                    string personRole = "business";
 
                     business.Attributes = new Dictionary<string, AttributeCache>();
                     business.AttributeValues = new Dictionary<string, AttributeValue>();
-                    AddPersonAttribute( householdIdAttribute, business, householdId.ToString() );
+                    AddPersonAttribute( householdIdAttribute, business, householdId.ToString(), personRole );
 
                     var groupMember = new GroupMember();
                     groupMember.Person = business;
@@ -1113,7 +1114,7 @@ namespace Excavator.F1
         /// <param name="attribute">The attribute.</param>
         /// <param name="person">The person.</param>
         /// <param name="value">The value.</param>
-        private static void AddPersonAttribute( AttributeCache attribute, Person person, string value, string familyRole = "" )
+        private static void AddPersonAttribute( AttributeCache attribute, Person person, string value, string personRole = "" )
         {
             if ( !string.IsNullOrWhiteSpace( value ) )
             {
@@ -1122,7 +1123,7 @@ namespace Excavator.F1
                 {
                     AttributeId = attribute.Id,
                     Value = value,
-                    ForeignId = familyRole  //Attempting to correct the contribution, address, phone # issues where the visitor or child is selected before the adult.
+                    ForeignId = personRole  //Attempting to correct the contribution, address, phone # issues where the visitor or child is selected before the adult. Also setting business.
                 } );
             }
         }
