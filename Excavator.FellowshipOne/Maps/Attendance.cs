@@ -58,7 +58,7 @@ namespace Excavator.F1
                 if ( startTime != null && startTime != DateTime.MinValue)
                 {
                     DateTime startDateTime = (DateTime)startTime;
-                    if ( startDateTime.Year >= 2013 )
+                    if ( startDateTime.Year == 2014 && startDateTime.Month >= 1 && startDateTime.Month <= 8 )
                     { 
 
                     //startDateTime = BruteForceDateTime(startTime);
