@@ -50,7 +50,7 @@ namespace Excavator.F1
 
             var groupService = new GroupService( lookupContext );
             var existingGroupList = new List<Group>();
-            existingGroupList = groupService.Queryable().ToList();
+            existingGroupList = groupService.Queryable().Where(g => g.ForeignId != null).ToList();
 
             foreach ( var row in tableData )
             {
@@ -58,6 +58,9 @@ namespace Excavator.F1
                 DateTime? startTime = row["StartDateTime"] as DateTime?;
                 if ( startTime != null && startTime != DateTime.MinValue )
                 {
+                    int? groupId = row["GroupID"] as int?;
+                    if ( existingGroupList.Find(g => g.ForeignId == groupId.ToString()) != null ) //making sure the group has been created.
+                    {
                     DateTime startDateTime = (DateTime)startTime;
                     DateTime? endTime = row["EndDateTime"] as DateTime?;
                     int? met = row["Met"] as int?;
@@ -75,22 +78,23 @@ namespace Excavator.F1
                         attendance.DidAttend = didAttend;
                         attendance.Note = comments;
                         attendance.CampusId = 1; //Campus is needed for attendance to show in attendance analysis.
+                        attendance.GroupId = existingGroupList.Find( g => g.ForeignId == groupId.ToString() ).Id;
 
-                        int? individualId = row["Individual_ID"] as int?;
+                        int? individualId = row["IndividualID"] as int?;
 
                         if ( individualId != null )
                         {
                             attendance.PersonAliasId = GetPersonAliasId( individualId );
                         }
 
-                        //look up Group
-                        int? groupId = row["GroupID"] as int?;
+                        ////look up Group
+                        //int? groupId = row["GroupID"] as int?;
 
-                        Group group = existingGroupList.Where( g => g.ForeignId == ( groupId.ToString() ) ).FirstOrDefault();
-                        if ( group != null )
-                        {
-                            attendance.GroupId = group.Id;
-                        }
+                        //Group group = existingGroupList.Where( g => g.ForeignId == ( groupId.ToString() ) ).FirstOrDefault();
+                        //if ( group != null )
+                        //{
+                        //    attendance.GroupId = group.Id;
+                        //}
 
                     //no other search type right now; small group attendance not currently set up in Rock.
                         var dvService = new DefinedValueService( lookupContext );
@@ -118,6 +122,7 @@ namespace Excavator.F1
 
                         ReportPartialProgress();
                 }
+            }
             }
         }
     }
