@@ -204,9 +204,10 @@ namespace Excavator.F1
 
                 }
                 //checks if Defined Value exists
+                var spiritualGiftsDefineType = new DefinedTypeService( rockContext ).Queryable().Where( d => d.Name == "Spiritual Gifts" ).FirstOrDefault();
                 string attributeName = row["AttributeName"] as string;
                 int? giftAttributeId = row["GiftAttributeID"] as int?;
-                if ( definedValueList.Find( d => d.Value == attributeName ) == null )
+                if ( definedValueList.Find( d => d.DefinedTypeId == spiritualGiftsDefineType.Id && d.Value == attributeName ) == null )
                 {
                     var definedTypeService = new DefinedTypeService( rockContext );
                     //creates Defined Value
