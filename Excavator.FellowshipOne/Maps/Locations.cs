@@ -47,7 +47,6 @@ namespace Excavator.F1
             var newGroupLocations = new List<GroupLocation>();
             var householdAVList = new AttributeValueService( lookupContext ).Queryable().Where( av => av.AttributeId == HouseholdAttributeId ).ToList();
 
-
             int completed = 0;
             int totalRows = tableData.Count();
             int percentage = ( totalRows - 1 ) / 100 + 1;
@@ -156,9 +155,33 @@ namespace Excavator.F1
                 if ( spouse == null )
                 {
                     var child = householdAVList.FirstOrDefault( p => p.Value == householdId.ToString() && p.ForeignId == "child" );
-                    if ( child != null )
+                    if ( child == null )
                     {
-                       return associatedPersonId = child.EntityId;
+                        var business = householdAVList.FirstOrDefault( p => p.Value == householdId.ToString() && p.ForeignId == "business" );
+                        if ( business == null )
+                        {
+                            var other = householdAVList.FirstOrDefault( p => p.Value == householdId.ToString() && p.ForeignId == "other" );
+                            if ( other == null )
+                            {
+                                var visitor = householdAVList.FirstOrDefault( p => p.Value == householdId.ToString() && p.ForeignId == "visitor" );
+                                if ( visitor != null )
+                                {
+                                    return associatedPersonId = visitor.EntityId;
+                                }
+                            }
+                            else
+                            {
+                                return associatedPersonId = other.EntityId;
+                            }
+                        }
+                        else
+                        {
+                            return associatedPersonId = business.EntityId;
+                        }
+                    }
+                    else
+                    {
+                        return associatedPersonId = child.EntityId;
                     }
                 }
                 else
@@ -170,7 +193,7 @@ namespace Excavator.F1
             {
                return associatedPersonId = head.EntityId;
             }
-            return associatedPersonId; //Only other two that wouldn't be pulled are 'Other' and 'Visitor' but we need the family to keep the data.
+            return associatedPersonId; 
         }
 
         /// <summary>
