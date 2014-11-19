@@ -39,11 +39,10 @@ namespace Excavator.F1
         private void MapCommunication( IQueryable<Row> tableData )
         {
             var lookupContext = new RockContext();
-            var categoryService = new CategoryService( lookupContext );
             var personService = new PersonService( lookupContext );
             var attributeService = new AttributeService( lookupContext );
 
-            List<DefinedValue> numberTypeValues = new DefinedValueService( lookupContext ).GetByDefinedTypeGuid( new Guid( Rock.SystemGuid.DefinedType.PERSON_PHONE_TYPE ) ).ToList();
+            var numberTypeValues = DefinedTypeCache.Read( new Guid( Rock.SystemGuid.DefinedType.PERSON_PHONE_TYPE ), lookupContext ).DefinedValues;
 
             // Look up additional Person attributes (existing)
             var personAttributes = attributeService.GetByEntityTypeId( PersonEntityTypeId ).ToList();
@@ -54,7 +53,7 @@ namespace Excavator.F1
             {
                 Rock.Web.Cache.AttributeCache.Flush( oldFacebookAttribute.Id );
                 attributeService.Delete( oldFacebookAttribute );
-                lookupContext.SaveChanges();
+                lookupContext.SaveChanges( true );
             }
 
             var oldTwitterAttribute = personAttributes.Where( a => a.Key == "TwitterUsername" ).FirstOrDefault();
@@ -62,11 +61,11 @@ namespace Excavator.F1
             {
                 Rock.Web.Cache.AttributeCache.Flush( oldTwitterAttribute.Id );
                 attributeService.Delete( oldTwitterAttribute );
-                lookupContext.SaveChanges();
+                lookupContext.SaveChanges( true );
             }
 
             int attributeEntityTypeId = EntityTypeCache.Read( "Rock.Model.Attribute" ).Id;
-            var socialMediaCategory = categoryService.GetByEntityTypeId( attributeEntityTypeId )
+            var socialMediaCategory = new CategoryService( lookupContext ).GetByEntityTypeId( attributeEntityTypeId )
                 .Where( c => c.Name == "Social Media" &&
                     c.EntityTypeQualifierValue == PersonEntityTypeId.ToString() &&
                     c.IconCssClass == "fa fa-twitter" )
@@ -74,7 +73,7 @@ namespace Excavator.F1
             if ( socialMediaCategory != null )
             {
                 lookupContext.Categories.Remove( socialMediaCategory );
-                lookupContext.SaveChanges();
+                lookupContext.SaveChanges( true );
             }
 
             // Cached Rock attributes: Facebook, Twitter, Instagram
@@ -102,7 +101,7 @@ namespace Excavator.F1
 
                 if ( individualId != null )
                 {
-                    int? personId = GetPersonId( individualId, householdId );
+                    int? personId = GetPersonAliasId( individualId, householdId );
                     if ( personId != null )
                     {
                         personList.Add( personId );
@@ -129,18 +128,27 @@ namespace Excavator.F1
                     if ( type.Contains( "Phone" ) || type.Contains( "Mobile" ) )
                     {
                         var extension = string.Empty;
-                        int extensionIndex = value.LastIndexOf( 'x' );
-                        if ( extensionIndex > 0 )
+                        var countryCode = Rock.Model.PhoneNumber.DefaultCountryCode();
+                        var normalizedNumber = string.Empty;
+                        var countryIndex = value.IndexOf( '+' );
+                        int extensionIndex = value.LastIndexOf( 'x' ) > 0 ? value.LastIndexOf( 'x' ) : value.Length;
+                        if ( countryIndex >= 0 )
                         {
+                            countryCode = value.Substring( countryIndex, countryIndex + 3 ).AsNumeric();
+                            normalizedNumber = value.Substring( countryIndex + 3, extensionIndex - 3 ).AsNumeric();
+                            extension = value.Substring( extensionIndex );
+                        }
+                        else if ( extensionIndex > 0 )
+                        {
+                            normalizedNumber = value.Substring( 0, extensionIndex ).AsNumeric();
                             extension = value.Substring( extensionIndex ).AsNumeric();
-                            value = value.Substring( 0, extensionIndex ).AsNumeric();
                         }
                         else
                         {
-                            value = value.AsNumeric();
+                            normalizedNumber = value.AsNumeric();
                         }
 
-                        if ( !string.IsNullOrWhiteSpace( value ) )
+                        if ( !string.IsNullOrWhiteSpace( normalizedNumber ) )
                         {
                             foreach ( var familyPersonId in personList )
                             {
@@ -152,9 +160,10 @@ namespace Excavator.F1
                                     newNumber.ModifiedDateTime = lastUpdated;
                                     newNumber.PersonId = (int)familyPersonId;
                                     newNumber.IsMessagingEnabled = false;
+                                    newNumber.CountryCode = countryCode;
                                     newNumber.IsUnlisted = !isListed;
                                     newNumber.Extension = extension.Left( 20 );
-                                    newNumber.Number = value.Left( 20 );
+                                    newNumber.Number = normalizedNumber.Left( 20 );
                                     newNumber.Description = communicationComment;
 
                                     newNumber.NumberTypeValueId = numberTypeValues.Where( v => type.StartsWith( v.Value ) )
@@ -172,7 +181,7 @@ namespace Excavator.F1
                     {
                         var person = personService.Queryable( includeDeceased: true ).FirstOrDefault( p => p.Id == personList.FirstOrDefault() );
                         person.Attributes = new Dictionary<string, AttributeCache>();
-                        person.AttributeValues = new Dictionary<string, List<AttributeValue>>();
+                        person.AttributeValues = new Dictionary<string, AttributeValue>();
 
                         if ( value.IsValidEmail() )
                         {
@@ -184,56 +193,54 @@ namespace Excavator.F1
                                 person.IsEmailActive = isListed;
                                 person.ModifiedDateTime = lastUpdated;
                                 person.EmailNote = communicationComment;
-                                lookupContext.SaveChanges();
+                                lookupContext.SaveChanges( true );
                             }
                             else if ( !person.Email.Equals( value ) )
                             {
                                 secondaryEmail = value;
                             }
 
-                            if ( !string.IsNullOrWhiteSpace( secondaryEmail ) )
+                            var existingSecondaryEmail = new AttributeValueService( lookupContext ).Queryable().Where( av => av.AttributeId == SecondaryEmailAttributeId && av.EntityId == person.Id ).FirstOrDefault();
+
+                            if ( !string.IsNullOrWhiteSpace( secondaryEmail ) && existingSecondaryEmail == null )
                             {
                                 person.Attributes.Add( secondaryEmailAttribute.Key, secondaryEmailAttribute );
-                                person.AttributeValues.Add( secondaryEmailAttribute.Key, new List<AttributeValue>() );
-                                person.AttributeValues[secondaryEmailAttribute.Key].Add( new AttributeValue()
+                                person.AttributeValues.Add( secondaryEmailAttribute.Key, new AttributeValue()
                                 {
                                     AttributeId = secondaryEmailAttribute.Id,
-                                    Value = secondaryEmail,
-                                    Order = 0
+                                    Value = secondaryEmail
                                 } );
                             }
                         }
                         else if ( type.Contains( "Twitter" ) )
                         {
                             person.Attributes.Add( twitterAttribute.Key, twitterAttribute );
-                            person.AttributeValues.Add( twitterAttribute.Key, new List<AttributeValue>() );
-                            person.AttributeValues[twitterAttribute.Key].Add( new AttributeValue()
+                            person.AttributeValues.Add( twitterAttribute.Key, new AttributeValue()
                             {
                                 AttributeId = twitterAttribute.Id,
-                                Value = value,
-                                Order = 0
+                                Value = value
                             } );
                         }
                         else if ( type.Contains( "Facebook" ) )
                         {
-                            person.Attributes.Add( facebookAttribute.Key, facebookAttribute );
-                            person.AttributeValues.Add( facebookAttribute.Key, new List<AttributeValue>() );
-                            person.AttributeValues[facebookAttribute.Key].Add( new AttributeValue()
+                            var existingFacebook = new AttributeValueService( lookupContext ).Queryable().Where( av => av.AttributeId == facebookAttribute.Id && av.EntityId == person.Id ).FirstOrDefault();
+                            if ( existingFacebook == null )
                             {
-                                AttributeId = facebookAttribute.Id,
-                                Value = value,
-                                Order = 0
-                            } );
+                                person.Attributes.Add( facebookAttribute.Key, facebookAttribute );
+                                person.AttributeValues.Add( facebookAttribute.Key, new AttributeValue()
+                                {
+                                    AttributeId = facebookAttribute.Id,
+                                    Value = value
+                                } );
+                            }
                         }
                         else if ( type.Contains( "Instagram" ) )
                         {
                             person.Attributes.Add( instagramAttribute.Key, instagramAttribute );
-                            person.AttributeValues.Add( instagramAttribute.Key, new List<AttributeValue>() );
-                            person.AttributeValues[instagramAttribute.Key].Add( new AttributeValue()
+                            person.AttributeValues.Add( instagramAttribute.Key, new AttributeValue()
                             {
                                 AttributeId = instagramAttribute.Id,
-                                Value = value,
-                                Order = 0
+                                Value = value
                             } );
                         }
 
@@ -248,30 +255,7 @@ namespace Excavator.F1
                     }
                     else if ( completed % ReportingNumber < 1 )
                     {
-                        var rockContext = new RockContext();
-                        rockContext.WrapTransaction( () =>
-                        {
-                            rockContext.Configuration.AutoDetectChangesEnabled = false;
-                            rockContext.PhoneNumbers.AddRange( newNumberList );
-                            rockContext.SaveChanges( DisableAudit );
-
-                            var newAttributeValues = new List<AttributeValue>();
-                            foreach ( var updatedPerson in updatedPersonList.Where( p => p.Attributes.Any() ) )
-                            {
-                                foreach ( var attributeCache in updatedPerson.Attributes.Select( a => a.Value ) )
-                                {
-                                    var newValue = updatedPerson.AttributeValues[attributeCache.Key].FirstOrDefault();
-                                    if ( newValue != null )
-                                    {
-                                        newValue.EntityId = updatedPerson.Id;
-                                        newAttributeValues.Add( newValue );
-                                    }
-                                }
-                            }
-
-                            rockContext.AttributeValues.AddRange( newAttributeValues );
-                            rockContext.SaveChanges( DisableAudit );
-                        } );
+                        SaveCommunication( newNumberList, updatedPersonList );
 
                         // reset so context doesn't bloat
                         lookupContext = new RockContext();
@@ -285,33 +269,43 @@ namespace Excavator.F1
 
             if ( newNumberList.Any() || updatedPersonList.Any() )
             {
-                var rockContext = new RockContext();
-                rockContext.WrapTransaction( () =>
-                {
-                    rockContext.Configuration.AutoDetectChangesEnabled = false;
-                    rockContext.PhoneNumbers.AddRange( newNumberList );
-                    rockContext.SaveChanges( DisableAudit );
-
-                    var newAttributeValues = new List<AttributeValue>();
-                    foreach ( var updatedPerson in updatedPersonList.Where( p => p.Attributes.Any() ) )
-                    {
-                        foreach ( var attributeCache in updatedPerson.Attributes.Select( a => a.Value ) )
-                        {
-                            var newValue = updatedPerson.AttributeValues[attributeCache.Key].FirstOrDefault();
-                            if ( newValue != null )
-                            {
-                                newValue.EntityId = updatedPerson.Id;
-                                newAttributeValues.Add( newValue );
-                            }
-                        }
-                    }
-
-                    rockContext.AttributeValues.AddRange( newAttributeValues );
-                    rockContext.SaveChanges( DisableAudit );
-                } );
+                SaveCommunication( newNumberList, updatedPersonList );
             }
 
             ReportProgress( 100, string.Format( "Finished communication import: {0:N0} records imported.", completed ) );
+        }
+
+        /// <summary>
+        /// Saves the communication.
+        /// </summary>
+        /// <param name="newNumberList">The new number list.</param>
+        /// <param name="updatedPersonList">The updated person list.</param>
+        private static void SaveCommunication( List<PhoneNumber> newNumberList, List<Person> updatedPersonList )
+        {
+            var rockContext = new RockContext();
+            rockContext.WrapTransaction( () =>
+            {
+                rockContext.Configuration.AutoDetectChangesEnabled = false;
+                rockContext.PhoneNumbers.AddRange( newNumberList );
+                rockContext.SaveChanges( DisableAudit );
+
+                var newAttributeValues = new List<AttributeValue>();
+                foreach ( var updatedPerson in updatedPersonList.Where( p => p.Attributes.Any() ) )
+                {
+                    foreach ( var attributeCache in updatedPerson.Attributes.Select( a => a.Value ) )
+                    {
+                        var newValue = updatedPerson.AttributeValues[attributeCache.Key];
+                        if ( newValue != null )
+                        {
+                            newValue.EntityId = updatedPerson.Id;
+                            newAttributeValues.Add( newValue );
+                        }
+                    }
+                }
+
+                rockContext.AttributeValues.AddRange( newAttributeValues );
+                rockContext.SaveChanges( DisableAudit );
+            } );
         }
     }
 }

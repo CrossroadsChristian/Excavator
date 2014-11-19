@@ -16,6 +16,8 @@
 //
 
 using System;
+using System.Data.SqlTypes;
+using System.Data.SqlClient;
 using System.Collections.Generic;
 using System.Linq;
 using OrcaMDF.Core.MetaData;
@@ -30,102 +32,169 @@ namespace Excavator.F1
     /// </summary>
     partial class F1Component
     {
-        private void MapAttendance(IQueryable<Row> tableData)
+       /// <summary>
+       /// Maps the attendance.
+       /// </summary>
+       /// <param name="tableData">The table data.</param>
+       /// <returns></returns>
+        //private DateTime? StartDateTime { get; set;}
+        private void MapAttendance( IQueryable<Row> tableData )
         {
             var lookupContext = new RockContext();
+            int completed = 0;
+            int totalRows = tableData.Count();
+            int percentage = ( totalRows - 1 ) / 100 + 1;
+            ReportProgress( 0, string.Format( "Verifying Attendance import ({0:N0} found).", totalRows ) );
 
-            foreach (var row in tableData)
+            var attendanceList = new List<Rock.Model.Attendance>();
+            var groupService = new GroupService( lookupContext );
+            var existingGroupList = new List<Group>();
+            existingGroupList = groupService.Queryable().ToList();
+
+            foreach ( var row in tableData )
             {
-                DateTime? startTime = row["Start_Date_time"] as DateTime?;
-                if (startTime != null)
+
+                   DateTime? startTime = row["Start_Date_Time"] as DateTime?;
+                if ( startTime != null && startTime != DateTime.MinValue)
                 {
+                    DateTime startDateTime = (DateTime)startTime;
+                    if ( startDateTime.Year == 2014 && startDateTime.Month >= 1 && startDateTime.Month <= 8 )
+                    { 
+
+                    //startDateTime = BruteForceDateTime(startTime);
+
                     var attendance = new Rock.Model.Attendance();
                     attendance.CreatedByPersonAliasId = ImportPersonAlias.Id;
                     attendance.ModifiedByPersonAliasId = ImportPersonAlias.Id;
                     attendance.CreatedDateTime = DateTime.Today;
                     attendance.ModifiedDateTime = DateTime.Today;
-                    attendance.StartDateTime = (DateTime)startTime;
+                    attendance.StartDateTime = startDateTime; //(DateTime)startTime; 
                     attendance.DidAttend = true;
-                    attendance.Guid = new Guid();
+                    attendance.CampusId = 1; //Campus is needed for attendance to show in attendance analysis.
 
 
-                    string position = row["CheckedInAs"] as string;
-                    string jobTitle = row["Job_Title"] as string;
-                    string machineName = row["Checkin_Machine_Name"] as string;
+                    //string position = row["CheckedInAs"] as string;
+                    //string jobTitle = row["Job_Title"] as string;
+                    //string machineName = row["Checkin_Machine_Name"] as string;
                     int? rlcId = row["RLC_ID"] as int?;
 
                     int? individualId = row["Individual_ID"] as int?;
-                    if (individualId != null)
-                    {
-                        attendance.PersonId = GetPersonId(individualId);
-                    }
 
-                    DateTime? checkInTime = row["Check_In_Time"] as DateTime?;
-                    if (checkInTime != null)
-                    {
-                        // set the start time to the time they actually checked in. If null it maintains Start_Date_Time
-                        attendance.StartDateTime = (DateTime)checkInTime;
-                    }
+                        if ( individualId != null )
+                        {
+                            attendance.PersonAliasId = GetPersonAliasId( individualId );
+                        }
 
-                    DateTime? checkOutTime = row["Check_Out_Time"] as DateTime?;
-                    if (checkOutTime != null)
-                    {
-                        attendance.EndDateTime = (DateTime)checkOutTime;
-                    }
+                        DateTime? checkInTime = row["Check_In_Time"] as DateTime?;
+                        if ( checkInTime != null )
+                        {
+                            // set the start time to the time they actually checked in. If null it maintains Start_Date_Time
+                            attendance.StartDateTime = (DateTime)checkInTime; //BruteForceDateTime( checkInTime );
+                        }
 
-                    string f1AttendanceCode = row["Tag_Code"] as string;
-                    if (f1AttendanceCode != null)
-                    {
-                        attendance.AttendanceCode = new AttendanceCode();
-                        attendance.AttendanceCode.Code = f1AttendanceCode;
-                    }
-                    string f1AttendanceCheckedInAs = row["CheckedInAs"] as string;
-                    if (f1AttendanceCode != null)
-                    {
-                        attendance.Note = f1AttendanceCheckedInAs;
-                    }
+                        DateTime? checkOutTime = row["Check_Out_Time"] as DateTime?;
+                        if ( checkOutTime != null )
+                        {
+                            attendance.EndDateTime = (DateTime)checkOutTime; //BruteForceDateTime( checkOutTime );
+                        }
 
-
-                    // look up location, schedule, and device -- all of these fields can be null if need be
-                    attendance.LocationId = GetLocationId(Convert.ToInt32(rlcId));
+                        //string f1AttendanceCode = row["Tag_Code"] as string;
+                        //if ( f1AttendanceCode != null )
+                        //{
+                        //    attendance.AttendanceCode = new Rock.Model.AttendanceCode();
+                        //    attendance.AttendanceCode.Code = f1AttendanceCode;
+                        //}
+                        string f1AttendanceCheckedInAs = row["CheckedInAs"] as string;
+                        if ( f1AttendanceCheckedInAs != null )
+                        {
+                            attendance.Note = f1AttendanceCheckedInAs;
+                        }
 
 
-                    //look up Group
-                    var groupService = new GroupService(lookupContext);
-                    var existingGroupList = new List<Group>();
-                    existingGroupList = groupService.Queryable().ToList();
-
-                    Group rlcGroup = existingGroupList.Where(g => g.ForeignId == (rlcId.ToString() + 'r')).FirstOrDefault();
-                    if (rlcGroup != null)
-                    {
-                        attendance.GroupId = rlcGroup.Id;
-                    }
-
-                    var dvService = new DefinedValueService(lookupContext);
-
-                    attendance.SearchTypeValueId = dvService.Queryable().Where(dv => dv.Value == "Phone Number").FirstOrDefault().Id;
-
-                    //look into creating DeviceIds and Locations (Generic)
+                        // look up location, schedule, and device -- all of these fields can be null if need be
+                        attendance.LocationId = GetLocationId( Convert.ToInt32( rlcId ) );
 
 
-                    // Other Attributes to create:
-                    // Tag_Comment
-                    // BreakoutGroup_Name
-                    // Pager_Code
+                        //look up Group
+                        Group rlcGroup = existingGroupList.Where( g => g.ForeignId == ( rlcId.ToString() ) ).FirstOrDefault();
+                        if ( rlcGroup != null )
+                        {
+                            attendance.GroupId = rlcGroup.Id;
+                        }
 
-                   var rockContext = new RockContext();
-                   rockContext.WrapTransaction( () =>
-                    {
-                        rockContext.Configuration.AutoDetectChangesEnabled = false;
-                        rockContext.Attendances.Add(attendance);
-                        rockContext.SaveChanges(DisableAudit);
-                    });
+                        var dvService = new DefinedValueService( lookupContext );
+
+                        attendance.SearchTypeValueId = dvService.Queryable().Where( dv => dv.Value == "Phone Number" ).FirstOrDefault().Id;
+
+                        //ReportProgress( 0, string.Format( "{0},{1},{2},{3},{4},{5},{6},{7},{8}", individualId,rlcId,rlcGroup.Name,attendance.CreatedByPersonAliasId,attendance.ModifiedByPersonAliasId,attendance.StartDateTime,attendance.DidAttend,attendance.AttendanceCode,attendance.LocationId ) );
+
+                        //look into creating DeviceIds and Locations (Generic)
+
+
+                        // Other Attributes to create:
+                        // Tag_Comment
+                        // BreakoutGroup_Name
+                        // Pager_Code
+
+                        //attendanceList.Add( attendance );
+
+
+                        completed++;
+                        if ( completed % percentage < 1 )
+                        {
+                            int percentComplete = completed / percentage;
+                            ReportProgress( percentComplete, string.Format( "Completed: {0:N0} Percent Completed: {0:N0} ", completed, percentComplete ) );
+                        }
+                    //    else if ( completed % ReportingNumber < 1 )
+                    //    {
+                    //        var rockContext = new RockContext();
+                    //        rockContext.WrapTransaction( () =>
+                    //{
+                    //    rockContext.Configuration.AutoDetectChangesEnabled = false;
+                    //    rockContext.Attendances.AddRange( attendanceList );
+                    //    rockContext.SaveChanges( DisableAudit );
+                    //} );
+
+
+                    //        ReportPartialProgress();
+                    //    }
+
+
+                        var rockContext = new RockContext();
+                        rockContext.WrapTransaction( () =>
+                        {
+                            rockContext.Configuration.AutoDetectChangesEnabled = false;
+
+                            rockContext.Attendances.Add( attendance );
+                            rockContext.SaveChanges( DisableAudit );
+                        } );
+
+
+                        ReportPartialProgress();
                 }
-            }
+              }
+           }
+        }
+
+
+        private DateTime BruteForceDateTime(DateTime? oldtDateTime)
+        {
+            DateTime newDateTime = Convert.ToDateTime(oldtDateTime);
+            int year = newDateTime.Year;
+            int month = newDateTime.Month;
+            int day = newDateTime.Day;
+            int hour = newDateTime.Hour;
+            int minute = newDateTime.Minute;
+            int second = newDateTime.Second;
+
+            DateTime newStartDateTime = new DateTime( year, month, day, hour, minute, second );
+            return newStartDateTime;
+
+            //throw new NotImplementedException();
         }
 
         /// <summary>
-        /// Gets the Location ID of a location already in Rock. --looks under dbo.group.foreignId+'r' then compares group.description with location name.
+        /// Gets the Location ID of a location already in Rock. --looks under dbo.group.foreignId then compares group.description with location name.
         /// </summary>
         /// <param name="rlcID">rlc ID </param>
         /// <returns>Location ID</returns>
@@ -134,10 +203,12 @@ namespace Excavator.F1
             var lookupContext = new RockContext();
             var groupService = new GroupService(lookupContext);
             var rlcGroup = new Group();
-            rlcGroup = groupService.Queryable().Where(g => g.ForeignId == (rlcId.ToString() + 'r')).FirstOrDefault();
-            string groupLocation = rlcGroup.Description.Trim();
+            string rlcIdString = rlcId.ToString();
+            rlcGroup = groupService.Queryable().Where(g => g.ForeignId == (rlcIdString)).FirstOrDefault();
+            string groupLocation = String.Empty;
+            if ( rlcGroup != null ) { groupLocation = rlcGroup.Description; }
 
-            if (groupLocation != null)
+            if (!String.IsNullOrWhiteSpace(groupLocation))
             {
                 var locationService = new LocationService(lookupContext);
                 var location = new List<Location>();
@@ -247,15 +318,19 @@ namespace Excavator.F1
                         }
                     case "Catapiller 107":
                         {
-                            return location.Where(l => l.Name == "Caterpiller").FirstOrDefault().Id;
+                            return location.Where( l => l.Name == "Caterpillar" ).FirstOrDefault().Id;
                         }
                     case "Chapel":
                         {
-                            return location.Where(l => l.Name == "Chapel").FirstOrDefault().Id; //102?
+                            return location.Where(l => l.Name == "Chapel").FirstOrDefault().Id;
                         }
                     case "Chapel 101":
                         {
                             return location.Where(l => l.Name == "Chapel 101").FirstOrDefault().Id;
+                        }
+                    case "Chapel 102":
+                        {
+                            return location.Where( l => l.Name == "Chapel 102" ).FirstOrDefault().Id;
                         }
                     case "Chapel Hallway":
                         {
@@ -263,7 +338,7 @@ namespace Excavator.F1
                         }
                     case "Chapel Sound Booth":
                         {
-                            return location.Where(l => l.Name == "Chapel").FirstOrDefault().Id; //102?
+                            return location.Where(l => l.Name == "Chapel").FirstOrDefault().Id; 
                         }
                     //case "Children's Lobby":  //Kayla doesn't know what location this is
                     //    {
@@ -296,6 +371,10 @@ namespace Excavator.F1
                     case "Decision Room B":
                         {
                             return location.Where(l => l.Name == "Decision Room - B").FirstOrDefault().Id;
+                        }
+                    case "Decision Room C":
+                        {
+                            return location.Where( l => l.Name == "Decision Room - C" ).FirstOrDefault().Id;
                         }
                     case "Duck 116":
                         {
@@ -459,7 +538,7 @@ namespace Excavator.F1
                         }
                     default:
                         return location.Where(l => l.Name == "Main Building").FirstOrDefault().Id;
-                }
+               }
             }
             else
             {
@@ -471,6 +550,21 @@ namespace Excavator.F1
 
         }
 
+
+        /// <summary>
+        /// Saves the attendance.
+        /// </summary>
+        /// <param name="attendance">The attendance.</param>
+        private static void SaveAttendance( Rock.Model.Attendance attendance )
+        {
+            var rockContext = new RockContext();
+            rockContext.WrapTransaction( () =>
+            {
+                rockContext.Configuration.AutoDetectChangesEnabled = false;
+                rockContext.Attendances.Add( attendance );
+                rockContext.SaveChanges( DisableAudit );
+            } );
+        }
 
     }
 }

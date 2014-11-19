@@ -61,7 +61,7 @@ namespace Excavator.F1
                 string text = row["Note_Text"] as string;
                 int? individualId = row["Individual_ID"] as int?;
                 int? householdId = row["Household_ID"] as int?;
-                int? personId = GetPersonId( individualId, householdId );
+                int? personId = GetPersonAliasId( individualId, householdId );
                 if ( personId != null && !string.IsNullOrWhiteSpace( text ) )
                 {
                     int? userId = row["NoteCreatedByUserID"] as int?;
@@ -85,6 +85,13 @@ namespace Excavator.F1
                         {
                             note.NoteTypeId = noteTimelineTypeId;
                         }
+                        /*var rockContext = new RockContext();
+                        rockContext.WrapTransaction( () =>
+                        {
+                            rockContext.Configuration.AutoDetectChangesEnabled = false;
+                            rockContext.Notes.Add( note );
+                            rockContext.SaveChanges( DisableAudit );
+                        } );*/
 
                         noteList.Add( note );
                         completed++;
@@ -96,15 +103,9 @@ namespace Excavator.F1
                         }
                         else if ( completed % ReportingNumber < 1 )
                         {
-                            var rockContext = new RockContext();
-                            rockContext.WrapTransaction( () =>
-                            {
-                                rockContext.Configuration.AutoDetectChangesEnabled = false;
-                                rockContext.Notes.AddRange( noteList );
-                                rockContext.SaveChanges( DisableAudit );
-                            } );
-
+                            SaveNotes( noteList );
                             ReportPartialProgress();
+                            noteList.Clear();
                         }
                     }
                 }
@@ -112,16 +113,25 @@ namespace Excavator.F1
 
             if ( noteList.Any() )
             {
-                var rockContext = new RockContext();
-                rockContext.WrapTransaction( () =>
-                {
-                    rockContext.Configuration.AutoDetectChangesEnabled = false;
-                    rockContext.Notes.AddRange( noteList );
-                    rockContext.SaveChanges( DisableAudit );
-                } );
+                SaveNotes( noteList );
             }
 
             ReportProgress( 100, string.Format( "Finished note import: {0:N0} notes imported.", completed ) );
+        }
+
+        /// <summary>
+        /// Saves the notes.
+        /// </summary>
+        /// <param name="noteList">The note list.</param>
+        private static void SaveNotes( List<Note> noteList )
+        {
+            var rockContext = new RockContext();
+            rockContext.WrapTransaction( () =>
+            {
+                rockContext.Configuration.AutoDetectChangesEnabled = false;
+                rockContext.Notes.AddRange( noteList );
+                rockContext.SaveChanges( DisableAudit );
+            } );
         }
     }
 }
